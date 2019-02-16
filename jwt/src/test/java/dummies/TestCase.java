@@ -1,6 +1,8 @@
 package dummies;
 
-import com.sun.xml.internal.messaging.saaj.util.Base64;
+import com.github.dfauth.jwt_jaas.jwt.KeyPairFactory;
+import com.github.dfauth.jwt_jaas.jwt.User;
+import com.github.dfauth.jwt_jaas.jwt.UserBuilder;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
@@ -11,12 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 
-import java.util.Collections;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.security.KeyPair;
+import java.util.Base64;
 
-import static dummies.Role.role;
+import static com.github.dfauth.jwt_jaas.jwt.Role.role;
 
 
 public class TestCase {
@@ -25,20 +25,52 @@ public class TestCase {
 
     @Test
     public void testIt() {
+        testIt(PUBLIC_KEY, PRIVATE_KEY);
+    }
+
+    @Test
+    public void testIt1() {
+//        try {
+            KeyPair keyPair = KeyPairFactory.createKeyPair("RSA", 2048);
+//            KeyFactory factory = KeyFactory.getInstance("RSA");
+//            RSAPublicKeySpec publicKeySpec = factory.getKeySpec(keyPair.getPublic(),
+//                    RSAPublicKeySpec.class);
+//            RSAPrivateKeySpec privateKeySpec = factory.getKeySpec(keyPair.getPrivate(),
+//                    RSAPrivateKeySpec.class);
+//            PrivateKey privateKey = factory.generatePrivate(privateKeySpec);
+//            PublicKey publicKey = factory.generatePublic(publicKeySpec);
+//            testIt(
+//                    Base64.getEncoder().encodeToString(publicKey.getEncoded()),
+//                    Base64.getEncoder().encodeToString(privateKey.getEncoded())
+//            );
+            testIt(
+                    Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded()),
+                    Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded())
+            );
+//        } catch (NoSuchAlgorithmException e) {
+//            logger.error(e.getMessage(), e);
+//            throw new RuntimeException(e);
+//        } catch (InvalidKeySpecException e) {
+//            logger.error(e.getMessage(), e);
+//            throw new RuntimeException(e);
+//        }
+    }
+
+    public void testIt(String publicKey, String privateKey) {
 
         JWTAuth provider = JWTAuth.create(Vertx.vertx(), new JWTAuthOptions()
                 .addPubSecKey(new PubSecKeyOptions()
                         .setAlgorithm("RS256")
-                        .setPublicKey(PUBLIC_KEY)
-                        .setSecretKey(PRIVATE_KEY)
+                        .setPublicKey(publicKey)
+                        .setSecretKey(privateKey)
                 ));
 
         User user = User.of("fred", role("test:admin"), role("test:user"));
         String token = provider.generateToken(JsonObject.mapFrom(user), new JWTOptions().setAlgorithm("RS256"));
-        logger.info("token: "+ token);
-        Stream.of(token.split("\\.")).forEach(t -> {
-            logger.info("token part: "+ Base64.base64Decode(t));
-        });
+//        logger.info("token: "+ token);
+//        Stream.of(token.split("\\.")).forEach(t -> {
+//            logger.info("token part: "+ Base64.base64Decode(t));
+//        });
 
         provider.authenticate(new JsonObject().put("jwt", token), res -> {
             if (res.succeeded()) {
@@ -90,124 +122,3 @@ public class TestCase {
 
 }
 
-class User {
-    private final int iat;
-    private String userId;
-    private Set<Role> roles;
-
-    User(String userId) {
-        this(userId, Collections.emptySet());
-    }
-
-    User(String userId, Set<Role> roles) {
-        this(userId, 0, roles);
-    }
-
-    User(String userId, int iat, Set<Role> roles) {
-        this.userId = userId;
-        this.iat = iat;
-        this.roles = roles;
-    }
-
-    public Set<Role> getRoles() {
-        return roles;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public int getIat() {
-        return iat;
-    }
-
-    public static User of(String userId, Role... roles) {
-        return new User(userId, Stream.of(roles).collect(Collectors.toSet()));
-    }
-}
-
-class Role {
-    private String roleName;
-    private String systemId;
-
-    Role(String roleName, String systemId) {
-        this.roleName = roleName;
-        this.systemId = systemId;
-    }
-
-    public String getSystemId() {
-        return systemId;
-    }
-
-    public String getRoleName() {
-        return roleName;
-    }
-
-    public static Role role(String role) {
-        String[] tmp = role.split(":");
-        if(tmp.length != 2) {
-            throw new IllegalArgumentException("Invalid format - expecting 'systemId:roleName'");
-        }
-        return new Role(tmp[0], tmp[1]);
-    }
-}
-
-class UserBuilder {
-    private String userId;
-    private int iat;
-    private Set<RoleBuilder> roles;
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public Set<RoleBuilder> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(Set<RoleBuilder> roles) {
-        this.roles = roles;
-    }
-
-    public User build() {
-        return new User(userId, iat, roles.stream().map(r -> r.build()).collect(Collectors.toSet()));
-    }
-
-    public int getIat() {
-        return iat;
-    }
-
-    public void setIat(int iat) {
-        this.iat = iat;
-    }
-}
-
-class RoleBuilder {
-    private String roleName;
-    private String systemId;
-
-
-    public String getRoleName() {
-        return roleName;
-    }
-
-    public void setRoleName(String roleName) {
-        this.roleName = roleName;
-    }
-
-    public String getSystemId() {
-        return systemId;
-    }
-
-    public void setSystemId(String systemId) {
-        this.systemId = systemId;
-    }
-
-    public Role build() {
-        return new Role(systemId, roleName);
-    }
-}
