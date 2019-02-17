@@ -1,7 +1,5 @@
 package com.github.dfauth.jwt_jaas.jwt;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;

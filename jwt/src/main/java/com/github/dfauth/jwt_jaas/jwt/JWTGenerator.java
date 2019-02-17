@@ -28,7 +28,7 @@ public class JWTGenerator {
         provider = JWTAuth.create(Vertx.vertx(),new JWTAuthOptions().addPubSecKey(options));
     }
 
-    public String generateToken(Object obj, String algo) {
+    public String generateToken(Object obj) {
         JsonObject json = JsonObject.mapFrom(obj);
         return provider.generateToken(json, new JWTOptions().setAlgorithm(options.getAlgorithm()));
     }

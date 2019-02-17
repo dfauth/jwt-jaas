@@ -1,22 +1,19 @@
 package dummies
 
-import java.net.Authenticator
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.headers.{GenericHttpCredentials, HttpChallenge, HttpCredentials}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
-import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1}
-import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post, provide}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post}
+import com.github.dfauth.jwt_jaas.jwt.Role.role
+import com.github.dfauth.jwt_jaas.jwt.{JWTGenerator, JWTVerifier, KeyPairFactory, User}
 import com.typesafe.scalalogging.LazyLogging
-import dummies.auth.JsonSupport
+import dummies.MyDirectives._
 import io.restassured.RestAssured._
 import io.restassured.http.ContentType
 import org.hamcrest.Matchers._
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json._
-import com.emarsys.jwt.akka.http._
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
@@ -114,21 +111,26 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     }
   }
 
+    //User.of("fred", role("test:admin"), role("test:user"))
+
+  //  def authenticate(jwtVerifier: JWTVerifier): Directive1[User] = for {
+//    jwtToken <- optionalHeaderValueByName("Authorization").map(v => v.map(_.split(" ").toList.tail)
+//    userData <- jwtVerifier.authenticateToken(jwtToken, u => {})
+//  } yield userData
+
   "any endpoint" should "be able to be authenticated" in {
 
     val component = Component("say hello to %s from a component")
 
-//    jwtAuthenticate(as[CustomTokenData]) { customTokenData =>
-//      if (customTokenData.customerId == requestedCustomerId) {
-//        complete(StatusCodes.OK)
-//      }
-//    }
+    val testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
+    val jwtVerifier = new JWTVerifier(testKeyPair.getPublic)
+
 
     val route =
       path("hello") {
         get {
-          jwtAuthenticate(as[CustomTokenData]) { customTokenData =>
-            complete(HttpEntity(ContentTypes.`application/json`, "{\"say\": \"hello\"}"))
+          authenticate(jwtVerifier) { user =>
+            complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello ${user}"}"""))
           }
         }
       }
@@ -139,7 +141,11 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     Await.result(bindingFuture, 5000.seconds)
 
     try {
-      when().
+      val jwtGenerator = new JWTGenerator(testKeyPair.getPrivate)
+      val user = User.of("fred", role("test:admin"), role("test:user"))
+      val token = jwtGenerator.generateToken(user)
+      given().header("Authorization", "Bearer "+token).
+        when().log().headers().
         get(endPoint.endPointUrl("hello")).
         then().
         statusCode(200).
@@ -187,7 +193,7 @@ object auth {
 //  def validateAccessToken(str: String) = Some(User("fred"))
 }
 
-case class User(name:String)
+case class User1(name:String)
 case class Payload(name:String)
 case class Result(message:String)
 

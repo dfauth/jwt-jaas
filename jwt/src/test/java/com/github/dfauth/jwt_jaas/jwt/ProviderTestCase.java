@@ -18,7 +18,7 @@ public class ProviderTestCase {
         KeyPair testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048);
         JWTGenerator jwtGenerator = new JWTGenerator(testKeyPair.getPrivate());
         User user = User.of("fred", role("test:admin"), role("test:user"));
-        String token = jwtGenerator.generateToken(user, "RS256");
+        String token = jwtGenerator.generateToken(user);
 
         JWTVerifier jwtVerifier = new JWTVerifier(testKeyPair.getPublic());
         jwtVerifier.authenticateToken(token, u -> {
