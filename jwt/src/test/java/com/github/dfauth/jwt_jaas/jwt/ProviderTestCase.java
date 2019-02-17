@@ -21,7 +21,9 @@ public class ProviderTestCase {
         String token = jwtGenerator.generateToken(user, "RS256");
 
         JWTVerifier jwtVerifier = new JWTVerifier(testKeyPair.getPublic());
-        jwtVerifier.authenticateToken(token);
+        jwtVerifier.authenticateToken(token, u -> {
+            logger.info("u is: "+u);
+        });
 //        String testPrivateKey = KeyPairFactory.asHex(testKeyPair.getPrivate().getEncoded());
 
     }
