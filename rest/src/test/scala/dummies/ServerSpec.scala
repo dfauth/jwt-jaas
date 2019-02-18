@@ -6,7 +6,6 @@ import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, po
 import com.github.dfauth.jwt_jaas.jwt.Role.role
 import com.github.dfauth.jwt_jaas.jwt.{JWTGenerator, JWTVerifier, KeyPairFactory, User}
 import com.typesafe.scalalogging.LazyLogging
-import dummies.MyDirectives._
 import io.restassured.RestAssured._
 import io.restassured.http.ContentType
 import org.hamcrest.Matchers._
@@ -126,30 +125,24 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     val jwtVerifier = new JWTVerifier(testKeyPair.getPublic)
 
 
-    val route =
-      path("hello") {
-        get {
-          authenticate(jwtVerifier) { user =>
-            complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello ${user}"}"""))
-          }
-        }
-      }
-
-    val endPoint = RestEndPointServer(route, host, port)
+    import Routes._
+    val endPoint = RestEndPointServer(hello(jwtVerifier), host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5000.seconds)
+    Await.result(bindingFuture, 5.seconds)
 
     try {
+      val userId: String = "fred"
+
       val jwtGenerator = new JWTGenerator(testKeyPair.getPrivate)
-      val user = User.of("fred", role("test:admin"), role("test:user"))
+      val user = User.of(userId, role("test:admin"), role("test:user"))
       val token = jwtGenerator.generateToken(user)
       given().header("Authorization", "Bearer "+token).
         when().log().headers().
         get(endPoint.endPointUrl("hello")).
         then().
         statusCode(200).
-        body("say",equalTo("hello"));
+        body("say",equalTo(s"hello to authenticated ${userId}"));
       endPoint.stop(bindingFuture)
     } finally {
       endPoint.stop(bindingFuture)

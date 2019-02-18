@@ -2,34 +2,44 @@ package dummies
 
 import java.util.function.Consumer
 
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.server.Directive1
+import akka.http.scaladsl.model.headers.HttpChallenge
+import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, Rejection}
 import akka.http.scaladsl.server.Directives._
 import com.github.dfauth.jwt_jaas.jwt.{JWTVerifier, User}
+import com.typesafe.scalalogging.LazyLogging
 
-object MyDirectives {
+object MyDirectives extends LazyLogging {
 
-  private def extractBearerToken(authHeader: Option[Authorization]): Option[String] =
-    authHeader.collect {
-      case Authorization(OAuth2BearerToken(token)) => token
-    }
+  private def extractBearerToken(authHeader: Option[String]): Option[String] =
+    authHeader.filter(_.startsWith("Bearer ")).map(token => token.substring("Bearer ".length))
 
-  //  def authenticate: Directive1[User] = ???
+  private def bearerToken: Directive1[Option[String]] =
+    for {
+      authBearerHeader <- optionalHeaderValueByName("Authorization").map(extractBearerToken)
+//      xAuthCookie <- optionalCookie("X-Authorization-Token").map(_.map(_.value))
+    } yield authBearerHeader //.orElse(xAuthCookie)
+
+  private def authRejection: Rejection = AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, HttpChallenge("", ""))
+
   def authenticate(verifier:JWTVerifier): Directive1[User] = {
     var user:User = null
-    val d = optionalHeaderValueByName("Authorization")
-//    val d = optionalHeaderValueByType(classOf[Authorization]).map(extractBearerToken)
-      d.map(o => o.
-        map(v =>
-          v.split(" ").toList
-          match {
-      case x :: xs :: Nil => verifier.authenticateToken(xs, new Consumer[User](){
-        override def accept(u: User): Unit = user = u
-      })
-      case _ => // reject
-    }))
+    bearerToken.flatMap {
+      case Some(token) => {
+        verifier.authenticateToken(token, new Consumer[User] {
+          override def accept(t: User): Unit = user = t
+        })
+        if(user == null) {
+          reject(authRejection)
+        }
+        provide(user)
+      }
+      case None => reject(authRejection)
+    }
+//    token = optionalHeaderValueByName("Authorization").map(extractBearerToken)
+//    verifier.authenticateToken(token, new Consumer[User] {
+//      override def accept(t: User): Unit = user = t
+//    })
 //    val user = User.of("fred", role("test:admin"), role("test:user"))
-    provide(user)
   }
 //    Directive.apply[Tuple1[User]](f => complete(Tuple1(user)))
 //  }

@@ -12,7 +12,7 @@ import scala.concurrent.Future
 object RestEndPointServer {
 }
 
-case class RestEndPointServer(route:Route, hostname:String, port:Int) extends LazyLogging {
+case class RestEndPointServer(route:Route, hostname:String = "localhost", port:Int = 8080) extends LazyLogging {
 
   def endPointUrl(str: String) = s"http://${hostname}:${port}/${str}"
 
