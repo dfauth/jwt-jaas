@@ -1,10 +1,8 @@
 package dummies
 
-import java.util.function.Consumer
-
 import akka.http.scaladsl.model.headers.HttpChallenge
-import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, Rejection}
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, Rejection}
 import com.github.dfauth.jwt_jaas.jwt.{JWTVerifier, User}
 import com.typesafe.scalalogging.LazyLogging
 
@@ -25,12 +23,7 @@ object MyDirectives extends LazyLogging {
     var user:User = null
     bearerToken.flatMap {
       case Some(token) => {
-        verifier.authenticateToken(token, new Consumer[User] {
-          override def accept(t: User): Unit = user = t
-        })
-        if(user == null) {
-          reject(authRejection)
-        }
+        val user:User = verifier.authenticateToken(token, verifier.asUser)
         provide(user)
       }
       case None => reject(authRejection)

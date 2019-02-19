@@ -1,36 +1,50 @@
 package com.github.dfauth.jwt_jaas.jwt;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.PubSecKeyOptions;
-import io.vertx.ext.auth.jwt.JWTAuth;
-import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.auth.jwt.JWTOptions;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 
 import java.security.PrivateKey;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.AbstractMap;
 import java.util.Base64;
+import java.util.Date;
+import java.util.Map;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 
 public class JWTGenerator {
 
-    private final JWTAuth provider;
-    private final PubSecKeyOptions options;
+
+    private final PrivateKey privateKey;
+    private final SignatureAlgorithm algorithm;
 
     public JWTGenerator(PrivateKey privateKey) {
         this(privateKey, "RS256");
     }
 
     public JWTGenerator(PrivateKey privateKey, String algorithm) {
-        options =  new PubSecKeyOptions()
-                        .setAlgorithm(algorithm)
-                        .setSecretKey(asBase64(privateKey.getEncoded()));
-        provider = JWTAuth.create(Vertx.vertx(),new JWTAuthOptions().addPubSecKey(options));
+        this.privateKey = privateKey;
+        this.algorithm = SignatureAlgorithm.forName(algorithm);
     }
 
-    public String generateToken(Object obj) {
-        JsonObject json = JsonObject.mapFrom(obj);
-        return provider.generateToken(json, new JWTOptions().setAlgorithm(options.getAlgorithm()));
+    public String generateToken(String subject, String key, Object value) {
+        return generateToken(subject, new AbstractMap.SimpleEntry(key, value));
+    }
+
+    public String generateToken(String subject, Map.Entry<String, Object>... claims) {
+        LocalDateTime now = LocalDateTime.now();
+        JwtBuilder builder = Jwts.builder()
+                .setSubject(subject)
+                .setNotBefore(Date.from(now.atZone(ZoneId.systemDefault()).toInstant()))
+                .setIssuedAt(Date.from(now.atZone(ZoneId.systemDefault()).toInstant()))
+                .setExpiration(Date.from(now.plusHours(1).atZone(ZoneId.systemDefault()).toInstant()))
+                .setIssuer("me")
+                .signWith(privateKey, algorithm);
+        Stream.of(claims).forEach(c -> builder.claim(c.getKey(), c.getValue()));
+        return builder.compact();
     }
 
 

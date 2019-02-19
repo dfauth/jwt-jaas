@@ -21,7 +21,7 @@ object Main extends LazyLogging {
     val jwtVerifier = new JWTVerifier(publicKey)
     val jwtGenerator = new JWTGenerator(privateKey)
     val user = User.of("fred", role("test:admin"), role("test:user"))
-    val token = jwtGenerator.generateToken(user)
+    val token = jwtGenerator.generateToken(user.getUserId, "user", user)
     println(s"token is ${token}")
 
     import Routes._

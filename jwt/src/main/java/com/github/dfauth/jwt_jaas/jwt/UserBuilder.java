@@ -1,12 +1,9 @@
 package com.github.dfauth.jwt_jaas.jwt;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.util.Set;
 import java.util.stream.Collectors;
 
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class UserBuilder {
     private String userId;
     private Set<RoleBuilder> roles;

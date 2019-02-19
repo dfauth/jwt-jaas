@@ -110,13 +110,6 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     }
   }
 
-    //User.of("fred", role("test:admin"), role("test:user"))
-
-  //  def authenticate(jwtVerifier: JWTVerifier): Directive1[User] = for {
-//    jwtToken <- optionalHeaderValueByName("Authorization").map(v => v.map(_.split(" ").toList.tail)
-//    userData <- jwtVerifier.authenticateToken(jwtToken, u => {})
-//  } yield userData
-
   "any endpoint" should "be able to be authenticated" in {
 
     val component = Component("say hello to %s from a component")
@@ -149,41 +142,6 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     }
   }
 
-}
-
-object auth {
-  //  def authenticate[T](authenticator: Authenticator[T]): AuthenticationDirective[T] = {
-
-//  private def authenticate: Directive1[Map[String, Any]] =
-//    authenticateOrRejectWithChallenge(authenticator _)
-//
-//  def authenticator(credentials: Option[HttpCredentials]): Future[AuthenticationResult[String]] =
-//    Future {
-//      credentials match {
-//        case Some(creds) if auth(creds) => Right("some-user-name-from-creds")
-//        case _                          => Left(HttpChallenge("blah"))
-//      }
-
-//  def authenticate: Directive1[User] =
-//    for {
-//      credentials <- List(Some(GenericHttpCredentials))
-//      result <- {
-//        credentials match {
-//          case Some(c) if c.scheme.equalsIgnoreCase("Bearer") => authenticate(c.token)
-//          case _ => rejectUnauthenticated(AuthenticationFailedRejection.CredentialsMissing)
-//        }
-//      }
-//    } yield result
-//
-//
-//  def authenticate(token: String): Directive1[User] = {
-//    validateAccessToken(token) match {
-//      case Some(user) => provide(user)
-//      case None => rejectUnauthenticated(AuthenticationFailedRejection.CredentialsRejected)
-//    }
-//  }
-//
-//  def validateAccessToken(str: String) = Some(User("fred"))
 }
 
 case class User1(name:String)
