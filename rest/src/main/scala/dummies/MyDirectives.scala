@@ -28,22 +28,7 @@ object MyDirectives extends LazyLogging {
       }
       case None => reject(authRejection)
     }
-//    token = optionalHeaderValueByName("Authorization").map(extractBearerToken)
-//    verifier.authenticateToken(token, new Consumer[User] {
-//      override def accept(t: User): Unit = user = t
-//    })
-//    val user = User.of("fred", role("test:admin"), role("test:user"))
   }
-//    Directive.apply[Tuple1[User]](f => complete(Tuple1(user)))
-//  }
-//    onComplete(f) flatMap {
-//      case Success(t) =>
-//        provide(t)
-//      case Failure(error) =>
-//        complete(apiError.statusCode, apiError.message)
-//    }
-
-
 }
 
 

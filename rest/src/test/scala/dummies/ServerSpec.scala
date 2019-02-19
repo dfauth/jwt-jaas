@@ -129,7 +129,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 
       val jwtGenerator = new JWTGenerator(testKeyPair.getPrivate)
       val user = User.of(userId, role("test:admin"), role("test:user"))
-      val token = jwtGenerator.generateToken(user)
+      val token = jwtGenerator.generateToken(user.getUserId, "user", user)
       given().header("Authorization", "Bearer "+token).
         when().log().headers().
         get(endPoint.endPointUrl("hello")).

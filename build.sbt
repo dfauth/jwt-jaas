@@ -1,4 +1,4 @@
-name := "akka-http-for-dummies"
+name := "jwt-jaas"
 
 version := "0.1"
 
@@ -8,6 +8,7 @@ scalaVersion := "2.12.6"
 //scala deps
 val scalactic = "org.scalactic" %% "scalactic" % "3.0.5"
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+// val scalatest_testng = "org.scalatest" %% "scalatest-testng" % "3.0.0-SNAP13"
 val akkaHttp = "com.typesafe.akka" %% "akka-http"   % "latest.release"
 val akkaStream = "com.typesafe.akka" %% "akka-stream" % "latest.release"
 val akkaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "latest.release"
@@ -25,9 +26,9 @@ val logback = "ch.qos.logback" % "logback-classic" % "latest.release"
 val restAssurred = "io.rest-assured" % "rest-assured" % "latest.release"
 val hamcrest = "org.hamcrest" % "hamcrest-all" % "latest.release"
 // val vertxJwt= "io.vertx" % "vertx-auth-jwt" % "latest.release"
-val jjwt_api = "io.jsonwebtoken" % "jjwt-api" % "latest.release" % "compile"
-val jjwt_impl = "io.jsonwebtoken" % "jjwt-impl" % "latest.release" % "runtime"
-val jjwt_jackson = "io.jsonwebtoken" % "jjwt-jackson" % "latest.release" % "runtime"
+val jjwt_api = "io.jsonwebtoken" % "jjwt-api" % "latest.release" //% "compile"
+val jjwt_impl = "io.jsonwebtoken" % "jjwt-impl" % "latest.release" //% "runtime,test"
+val jjwt_jackson = "io.jsonwebtoken" % "jjwt-jackson" % "latest.release" //% "runtime"
 //val jackson_databind = "com.fasterxml.jackson.core" % "jackson-databind" % "latest.release"
 
 
