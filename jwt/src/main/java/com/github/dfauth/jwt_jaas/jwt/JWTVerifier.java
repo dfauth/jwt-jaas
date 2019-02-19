@@ -31,11 +31,49 @@ public class JWTVerifier {
         this.publicKey = publicKey;
     }
 
-    public <T> T authenticateToken(String token, Function<Claims, T> f) {
-        Jws<Claims> claims = Jwts.parser()
-                .setSigningKey(publicKey)
-                .requireIssuer("me")
-                .parseClaimsJws(token);
-        return f.apply(claims.getBody());
+    public <T> TokenAuthentication<T> authenticateToken(String token, Function<Claims, T> f) {
+        try {
+            Jws<Claims> claims = Jwts.parser()
+                    .setSigningKey(publicKey)
+                    .requireIssuer("me")
+                    .parseClaimsJws(token);
+            return TokenAuthentication.Success.with(f.apply(claims.getBody()));
+        } catch (RuntimeException e) {
+            return TokenAuthentication.Failure.with(e);
+        }
+    }
+
+    public static class TokenAuthentication<T> {
+
+        public static class Success<T> extends TokenAuthentication<T> {
+
+            private final T payload;
+
+            public Success(T payload) {
+                this.payload = payload;
+            }
+
+            public static <T> TokenAuthentication<T> with(T payload) {
+                return new Success(payload);
+            }
+
+            public T getPayload() {
+                return payload;
+            }
+        }
+
+        public static class Failure<T> extends TokenAuthentication<T> {
+
+            private final RuntimeException e;
+
+            public Failure(RuntimeException e) {
+                this.e = e;
+            }
+
+            public static <T> TokenAuthentication<T> with(RuntimeException e) {
+                return new Failure(e);
+            }
+        }
+
     }
 }

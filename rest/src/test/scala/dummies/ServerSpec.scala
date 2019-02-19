@@ -41,7 +41,6 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
         then().
         statusCode(200).
         body("say",equalTo("hello"));
-      endPoint.stop(bindingFuture)
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -71,7 +70,6 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
         then().log().body(true).
         statusCode(200).
         body("say",equalTo(s"hello to ${name}"));
-      endPoint.stop(bindingFuture)
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -104,7 +102,6 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
         then().log().body(true).
         statusCode(200).
         body("message",equalTo(s"say hello to ${name} from a component"));
-      endPoint.stop(bindingFuture)
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -136,7 +133,41 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
         then().
         statusCode(200).
         body("say",equalTo(s"hello to authenticated ${userId}"));
+    } finally {
       endPoint.stop(bindingFuture)
+    }
+  }
+
+  "any tampering with the token" should "fail to be authenticated" in {
+
+    val component = Component("say hello to %s from a component")
+
+    val testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
+    val jwtVerifier = new JWTVerifier(testKeyPair.getPublic)
+
+
+    import Routes._
+    val endPoint = RestEndPointServer(hello(jwtVerifier), host, port)
+    val bindingFuture = endPoint.start()
+
+    Await.result(bindingFuture, 5.seconds)
+
+    try {
+      val userId: String = "fred"
+
+      val jwtGenerator = new JWTGenerator(testKeyPair.getPrivate)
+      val user = User.of(userId, role("test:admin"), role("test:user"))
+      val token = jwtGenerator.generateToken(user.getUserId, "user", user)
+      val token1 = token.map(_ match {
+        case 'a' => 'z'
+        case 'z' => 'a'
+        case c => c
+      })
+      given().header("Authorization", "Bearer "+token1).
+        when().log().headers().
+        get(endPoint.endPointUrl("hello")).
+        then().
+        statusCode(401)
     } finally {
       endPoint.stop(bindingFuture)
     }

@@ -3,6 +3,7 @@ package dummies
 import akka.http.scaladsl.model.headers.HttpChallenge
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, Rejection}
+import com.github.dfauth.jwt_jaas.jwt.JWTVerifier.TokenAuthentication.{Failure, Success}
 import com.github.dfauth.jwt_jaas.jwt.{JWTVerifier, User}
 import com.typesafe.scalalogging.LazyLogging
 
@@ -23,8 +24,10 @@ object MyDirectives extends LazyLogging {
     var user:User = null
     bearerToken.flatMap {
       case Some(token) => {
-        val user:User = verifier.authenticateToken(token, verifier.asUser)
-        provide(user)
+        verifier.authenticateToken(token, verifier.asUser) match {
+          case s:Success[User] => provide(s.getPayload)
+          case f:Failure[User] => reject(authRejection)
+        }
       }
       case None => reject(authRejection)
     }
