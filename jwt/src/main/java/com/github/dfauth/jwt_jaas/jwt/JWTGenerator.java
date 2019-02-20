@@ -31,16 +31,20 @@ public class JWTGenerator {
     }
 
     public String generateToken(String subject, String key, Object value) {
-        return generateToken(subject, new AbstractMap.SimpleEntry(key, value));
+        return generateToken(subject, Date.from(LocalDateTime.now().plusHours(1).atZone(ZoneId.systemDefault()).toInstant()), new AbstractMap.SimpleEntry(key, value));
     }
 
-    public String generateToken(String subject, Map.Entry<String, Object>... claims) {
+    public String generateToken(String subject, Date expiry, String key, Object value) {
+        return generateToken(subject, expiry, new AbstractMap.SimpleEntry(key, value));
+    }
+
+    public String generateToken(String subject, Date expiry, Map.Entry<String, Object>... claims) {
         LocalDateTime now = LocalDateTime.now();
         JwtBuilder builder = Jwts.builder()
                 .setSubject(subject)
                 .setNotBefore(Date.from(now.atZone(ZoneId.systemDefault()).toInstant()))
                 .setIssuedAt(Date.from(now.atZone(ZoneId.systemDefault()).toInstant()))
-                .setExpiration(Date.from(now.plusHours(1).atZone(ZoneId.systemDefault()).toInstant()))
+                .setExpiration(expiry)
                 .setIssuer("me")
                 .signWith(privateKey, algorithm);
         Stream.of(claims).forEach(c -> builder.claim(c.getKey(), c.getValue()));

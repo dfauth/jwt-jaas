@@ -12,6 +12,7 @@ import org.hamcrest.Matchers._
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json._
 
+import scala.beans.BeanProperty
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -132,7 +133,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
         get(endPoint.endPointUrl("hello")).
         then().
         statusCode(200).
-        body("say",equalTo(s"hello to authenticated ${userId}"));
+        body("say",equalTo(s"hello to authenticated ${userId}"))
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -189,13 +190,18 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
       val userId: String = "fred"
       val password: String = "password"
 
-      given().
+      val response = given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl("login")).
-        then().
-        statusCode(200).
-        body("say",equalTo(s"hello to authenticated ${userId}"));
+        post(endPoint.endPointUrl("login"))
+        response.then().statusCode(200)
+      val authorizationToken = response.body.path[String]("authorizationToken")
+      logger.info(s"authorizationToken: ${authorizationToken}")
+      authorizationToken should not be null
+      val refreshToken = response.body.path[String]("refreshToken")
+      logger.info(s"refreshToken: ${refreshToken}")
+      refreshToken should not be null
+      refreshToken should not be authorizationToken
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -288,6 +294,9 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 case class User1(name:String)
 case class Payload(name:String)
 case class Result(message:String)
+class Tokens(@BeanProperty authorizationToken:String = null, @BeanProperty refreshToken:String = null, u:Unit = ()) {
+  def this() { this(u = ()) }
+}
 
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val payloadFormat:RootJsonFormat[Payload] = jsonFormat1(Payload)
