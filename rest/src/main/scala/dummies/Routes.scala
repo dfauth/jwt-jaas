@@ -3,11 +3,12 @@ package dummies
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post, reject}
 import com.github.dfauth.jwt_jaas.jwt.JWTVerifier
+import com.typesafe.scalalogging.LazyLogging
 import dummies.CredentialsJsonSupport._
 import dummies.MyDirectives.authenticate
 import dummies.MyDirectives.authRejection
 
-object Routes {
+object Routes extends LazyLogging {
 
   def hello(jwtVerifier: JWTVerifier) =
     path("hello") {
@@ -22,6 +23,7 @@ object Routes {
     path("login") {
       post {
         entity(as[Credentials]) { c =>
+          logger.info(s"c: ${c}")
           val user:Option[MyUser] = f(c)
           user.map { u =>
             complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello to authenticated ${u.userId}"}"""))

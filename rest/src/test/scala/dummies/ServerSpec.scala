@@ -175,6 +175,8 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 
   "any user" should "be able to authenticate" in {
 
+    import dummies.CredentialsJsonSupport._
+
     val component = Component("say hello to %s from a component")
 
     import Routes._
@@ -188,11 +190,12 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
       val password: String = "password"
 
       given().
-        when().log().body().
-        body(Credentials(userId, password)).
+        when().log().body().contentType(ContentType.JSON).
+        body(Credentials(userId, password).toJson.prettyPrint).
         post(endPoint.endPointUrl("login")).
         then().
-        statusCode(200)
+        statusCode(200).
+        body("say",equalTo(s"hello to authenticated ${userId}"));
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -209,6 +212,7 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val payloadFormat:RootJsonFormat[Payload] = jsonFormat1(Payload)
   implicit val resultFormat:RootJsonFormat[Result] = jsonFormat1(Result)
 }
+
 
 case class Component(messageFormat:String) {
   def handle(payload: Payload): Result = {
