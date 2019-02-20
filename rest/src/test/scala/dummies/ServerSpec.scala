@@ -173,7 +173,33 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     }
   }
 
+  "any user" should "be able to authenticate" in {
+
+    val component = Component("say hello to %s from a component")
+
+    import Routes._
+    val endPoint = RestEndPointServer(login(component.handle), host, port)
+    val bindingFuture = endPoint.start()
+
+    Await.result(bindingFuture, 5.seconds)
+
+    try {
+      val userId: String = "fred"
+      val password: String = "password"
+
+      given().
+        when().log().body().
+        body(Credentials(userId, password)).
+        post(endPoint.endPointUrl("login")).
+        then().
+        statusCode(200)
+    } finally {
+      endPoint.stop(bindingFuture)
+    }
+  }
+
 }
+
 
 case class User1(name:String)
 case class Payload(name:String)
@@ -187,5 +213,12 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
 case class Component(messageFormat:String) {
   def handle(payload: Payload): Result = {
     Result(String.format(messageFormat, payload.name))
+  }
+  def handle(credentials:Credentials): Option[MyUser]= {
+    if(credentials.equals(Credentials("fred","password"))) {
+      Some(MyUser("fred", Array("admin", "user")))
+    } else {
+      None
+    }
   }
 }

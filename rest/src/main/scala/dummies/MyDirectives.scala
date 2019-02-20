@@ -18,7 +18,7 @@ object MyDirectives extends LazyLogging {
 //      xAuthCookie <- optionalCookie("X-Authorization-Token").map(_.map(_.value))
     } yield authBearerHeader //.orElse(xAuthCookie)
 
-  private def authRejection: Rejection = AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, HttpChallenge("", ""))
+  def authRejection: Rejection = AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, HttpChallenge("", ""))
 
   def authenticate(verifier:JWTVerifier): Directive1[User] = {
     var user:User = null
