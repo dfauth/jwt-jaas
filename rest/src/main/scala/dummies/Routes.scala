@@ -10,7 +10,7 @@ import com.github.dfauth.jwt_jaas.jwt._
 import com.typesafe.scalalogging.LazyLogging
 import dummies.CredentialsJsonSupport._
 import dummies.MyDirectives.{authRejection, authenticate}
-import spray.json.JsonWriter
+import spray.json.{JsonWriter, RootJsonFormat}
 
 object Routes extends LazyLogging {
 
@@ -53,12 +53,24 @@ object Routes extends LazyLogging {
     }
 
 
-  def genericEndpoint[T](f:User => () => T)(implicit w: JsonWriter[T]):Route =
+  def genericGetEndpoint[T](f:User => () => T)(implicit w: JsonWriter[T]):Route =
     path("endpoint") {
       get {
         authenticate(jwtVerifier) { user =>
           val t:T = f(user)()
           complete(HttpEntity(ContentTypes.`application/json`, w.write(t).prettyPrint))
+        }
+      }
+    }
+
+  def genericPostEndpoint[TestPayload, TestResult](f:User => TestPayload => TestResult)(implicit aReader: RootJsonFormat[TestPayload], bWriter: RootJsonFormat[TestResult]):Route =
+    path("endpoint") {
+      post {
+        authenticate(jwtVerifier) { user =>
+          entity(as[TestPayload]) { a =>
+            val b:TestResult = f(user)(a)
+            complete(HttpEntity(ContentTypes.`application/json`, bWriter.write(b).prettyPrint))
+          }
         }
       }
     }

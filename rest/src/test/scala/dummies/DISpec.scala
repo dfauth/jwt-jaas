@@ -2,8 +2,9 @@ package dummies
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.Route
-import com.github.dfauth.jwt_jaas.jwt.{JWTVerifier, KeyPairFactory, Role, User}
+import com.github.dfauth.jwt_jaas.jwt.{Role, User}
 import com.typesafe.scalalogging.LazyLogging
+import dummies.CredentialsJsonSupport.credentialsFormat
 import io.restassured.RestAssured._
 import io.restassured.http.ContentType
 import io.restassured.response.Response
@@ -16,24 +17,16 @@ import scala.concurrent.duration._
 
 class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
 
-//  val host = "localhost"
-//  val port = 9000
-
-
-  "any authenticated endpoint" should "be able to propagate its user information" in {
+  "any authenticated get endpoint" should "be able to propagate its user information" in {
 
     val component = TestComponent(user => TestResult(user.getUserId))
-
-    val testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
-    val jwtVerifier = new JWTVerifier(testKeyPair.getPublic)
-
 
     import DISpecJsonSupport._
     import Routes._
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
 
-    val routes:Route = login(handle) ~ genericEndpoint(component.handleWithUser)
+    val routes:Route = login(handle) ~ genericGetEndpoint(component.handleWithUser)
 
     val endPoint = RestEndPointServer(routes)
     implicit val loginEndpoint:String = endPoint.endPointUrl("login")
@@ -56,6 +49,43 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
     }
   }
 
+  "any authenticated post endpoint" should "be able to propagate its user information" in {
+
+    val component = TestComponent2(user => (testPayload:TestPayload) => TestResult(s"${testPayload.payload} customised for ${user.getUserId}"))
+
+    import DISpecJsonSupport._
+    import Routes._
+    import TestUtils._
+    import akka.http.scaladsl.server.Directives._
+
+    val routes:Route = login(handle) ~ genericPostEndpoint(component.handleWithUser)(testPayloadFormat, testResultFormat)
+
+    val endPoint = RestEndPointServer(routes)
+    implicit val loginEndpoint:String = endPoint.endPointUrl("login")
+    val bindingFuture = endPoint.start()
+
+    Await.result(bindingFuture, 5.seconds)
+
+    try {
+      val userId:String = "fred"
+      val password:String = "password"
+      val tokens:Tokens = asUser(userId).withPassword(password).login
+
+      import DISpecJsonSupport.testPayloadFormat
+      import spray.json._
+
+      val payload = "WOOZ"
+      val bodyContent:String = TestPayload(payload).toJson.prettyPrint
+
+      val response:Response = given().header("Authorization", "Bearer "+tokens.authorizationToken).
+      when().log().all().contentType(ContentType.JSON).body(bodyContent).post(endPoint.endPointUrl("endpoint"))
+      response.then().statusCode(200).
+        body("payload",equalTo(s"${payload} customised for ${userId}"))
+    } finally {
+      endPoint.stop(bindingFuture)
+    }
+  }
+
 }
 
 case class TestComponent[T](f:User=>T) {
@@ -64,30 +94,21 @@ case class TestComponent[T](f:User=>T) {
   }
 }
 
-case class TestResult(userId:String)
+case class TestComponent2[A,B](f:User=>A=>B) {
+  def handleWithUser(user: User): A => B = {
+    a => f(user)(a)
+  }
+}
+
+case class TestPayload(payload:String)
+case class TestResult(payload:String)
 
 
 object DISpecJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
+  implicit val testPayloadFormat:RootJsonFormat[TestPayload] = jsonFormat1(TestPayload)
   implicit val testResultFormat:RootJsonFormat[TestResult] = jsonFormat1(TestResult)
 }
 
-/**
-
-val response = given().
-        when().log().body().contentType(ContentType.JSON).
-        body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl("login"))
-        response.then().statusCode(200)
-      val authorizationToken = response.body.path[String]("authorizationToken")
-      logger.info(s"authorizationToken: ${authorizationToken}")
-      authorizationToken should not be null
-      val refreshToken = response.body.path[String]("refreshToken")
-      logger.info(s"refreshToken: ${refreshToken}")
-      refreshToken should not be null
-      refreshToken should not be authorizationToken
-
-
-  */
 object TestUtils {
   def handle(credentials:Credentials): Option[User]= {
     if(credentials.equals(Credentials("fred","password"))) {
