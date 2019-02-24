@@ -2,10 +2,11 @@ package dummies
 
 import java.security.KeyFactory
 import java.security.spec.{PKCS8EncodedKeySpec, X509EncodedKeySpec}
+import java.time.ZonedDateTime
 import java.util.Base64
 
 import com.github.dfauth.jwt_jaas.jwt.Role.role
-import com.github.dfauth.jwt_jaas.jwt.{JWTGenerator, JWTVerifier, User}
+import com.github.dfauth.jwt_jaas.jwt.{JWTBuilder, JWTVerifier, User}
 import com.typesafe.scalalogging.LazyLogging
 
 object Main extends LazyLogging {
@@ -19,9 +20,9 @@ object Main extends LazyLogging {
     val publicKey = KeyFactory.getInstance("RSA").generatePublic(publicKeySpec)
     val privateKey = KeyFactory.getInstance("RSA").generatePrivate(privateKeySpec)
     val jwtVerifier = new JWTVerifier(publicKey)
-    val jwtGenerator = new JWTGenerator(privateKey)
+    val jwtBuilder = new JWTBuilder("me",privateKey)
     val user = User.of("fred", role("test:admin"), role("test:user"))
-    val token = jwtGenerator.generateToken(user.getUserId, "user", user)
+    val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusSeconds(20)).build()
     println(s"token is ${token}")
 
     import Routes._

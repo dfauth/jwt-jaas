@@ -16,17 +16,15 @@ public class ProviderTestCase {
     @Test
     public void testIt() {
         KeyPair testKeyPair = KeyPairFactory.createKeyPair("RSA", 2048);
-        JWTGenerator jwtGenerator = new JWTGenerator(testKeyPair.getPrivate());
+        JWTBuilder jwtBuilder = new JWTBuilder("me", testKeyPair.getPrivate());
         User user = User.of("fred", role("test:admin"), role("test:user"));
-        String token = jwtGenerator.generateToken(user.getUserId(), "user", user);
+        String token = jwtBuilder.forSubject(user.getUserId()).withClaim("roles", user.getRoles()).build();
 
         JWTVerifier jwtVerifier = new JWTVerifier(testKeyPair.getPublic());
         jwtVerifier.authenticateToken(token, claims -> {
             logger.info("claims: "+claims);
             return null;
         });
-//        String testPrivateKey = KeyPairFactory.asHex(testKeyPair.getPrivate().getEncoded());
-
     }
 
 }

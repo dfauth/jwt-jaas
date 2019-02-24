@@ -1,10 +1,12 @@
 package dummies
 
+import java.time.ZonedDateTime
+
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post}
 import com.github.dfauth.jwt_jaas.jwt.Role.role
-import com.github.dfauth.jwt_jaas.jwt.{JWTGenerator, JWTVerifier, KeyPairFactory, User}
+import com.github.dfauth.jwt_jaas.jwt.{JWTBuilder, JWTVerifier, KeyPairFactory, User}
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.RestAssured._
 import io.restassured.http.ContentType
@@ -125,9 +127,9 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     try {
       val userId: String = "fred"
 
-      val jwtGenerator = new JWTGenerator(testKeyPair.getPrivate)
+      val jwtBuilder = new JWTBuilder("me",testKeyPair.getPrivate)
       val user = User.of(userId, role("test:admin"), role("test:user"))
-      val token = jwtGenerator.generateToken(user.getUserId, "user", user)
+      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
       given().header("Authorization", "Bearer "+token).
         when().log().headers().
         get(endPoint.endPointUrl("hello")).
@@ -156,9 +158,9 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     try {
       val userId: String = "fred"
 
-      val jwtGenerator = new JWTGenerator(testKeyPair.getPrivate)
+      val jwtBuilder = new JWTBuilder("me",testKeyPair.getPrivate)
       val user = User.of(userId, role("test:admin"), role("test:user"))
-      val token = jwtGenerator.generateToken(user.getUserId, "user", user)
+      val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).build()
       val token1 = token.map(_ match {
         case 'a' => 'z'
         case 'z' => 'a'

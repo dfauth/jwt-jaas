@@ -8,9 +8,7 @@ import org.testng.annotations.Test;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-
-import static com.github.dfauth.jwt_jaas.jwt.JWTGenerator.asHex;
-
+import java.util.Base64;
 
 public class TestCase {
 
@@ -49,8 +47,8 @@ public class TestCase {
     @Test
     public void testGenerateKeyPairViaFactory() {
         KeyPair keyPair = KeyPairFactory.createKeyPair("RSA", 2048);
-        String priKeyString = asHex(keyPair.getPrivate().getEncoded());
-        String pubKeyString = asHex(keyPair.getPublic().getEncoded());
+        String priKeyString = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+        String pubKeyString = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
         Assert.assertNotEquals(pubKeyString, priKeyString);
         logger.info("publicKey: "+pubKeyString);
         logger.info("privateKey: "+priKeyString);
