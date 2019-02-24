@@ -21,9 +21,6 @@ public class JWTVerifier {
 
     public Function<Claims, User> asUser = claims -> {
         Set<RoleBuilder> roles = ((List<Map<String, Object>>) claims.get("roles", List.class)).stream().map(RBM).collect(Collectors.toSet());
-//        Set<RoleBuilder> roles = claims.get("roles", MapStream.class).stream().map(t -> {
-//            return new RoleBuilder().withSystemId((String) t.get("systemId")).withRoleName((String) t.get("rolename"));
-//        }).collect(Collectors.toSet());
         String userId = claims.getSubject();
         Date expiry = claims.getExpiration();
         return new UserBuilder().withUserId(userId).withExpiry(expiry.toInstant()).withRoles(roles).build();

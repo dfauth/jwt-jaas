@@ -6,7 +6,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post}
 import com.github.dfauth.jwt_jaas.jwt.Role.role
-import com.github.dfauth.jwt_jaas.jwt.{JWTBuilder, JWTVerifier, KeyPairFactory, User}
+import com.github.dfauth.jwt_jaas.jwt._
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.RestAssured._
 import io.restassured.http.ContentType
@@ -14,7 +14,6 @@ import org.hamcrest.Matchers._
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json._
 
-import scala.beans.BeanProperty
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -296,9 +295,9 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 case class User1(name:String)
 case class Payload(name:String)
 case class Result(message:String)
-class Tokens(@BeanProperty authorizationToken:String = null, @BeanProperty refreshToken:String = null, u:Unit = ()) {
-  def this() { this(u = ()) }
-}
+//class Tokens(@BeanProperty authorizationToken:String = null, @BeanProperty refreshToken:String = null, u:Unit = ()) {
+//  def this() { this(u = ()) }
+//}
 
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val payloadFormat:RootJsonFormat[Payload] = jsonFormat1(Payload)
@@ -306,13 +305,13 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
 }
 
 
-case class Component(messageFormat:String) {
+private case class Component(messageFormat:String) {
   def handle(payload: Payload): Result = {
     Result(String.format(messageFormat, payload.name))
   }
-  def handle(credentials:Credentials): Option[MyUser]= {
+  def handle(credentials:Credentials): Option[User]= {
     if(credentials.equals(Credentials("fred","password"))) {
-      Some(MyUser("fred", Array("admin", "user")))
+      Some(User.of("fred", Role.role("admin"), Role.role("user")))
     } else {
       None
     }

@@ -1,6 +1,9 @@
 package com.github.dfauth.jwt_jaas.jwt;
 
 public class Role {
+
+    public static final String DEFAULT_SYSTEM_ID = "default";
+
     private String roleName;
     private String systemId;
 
@@ -18,10 +21,16 @@ public class Role {
     }
 
     public static Role role(String role) {
+        String systemId, roleName;
         String[] tmp = role.split(":");
         if(tmp.length != 2) {
-            throw new IllegalArgumentException("Invalid format - expecting 'systemId:roleName'");
+            // default system
+            systemId = DEFAULT_SYSTEM_ID;
+            roleName = tmp[0];
+        } else {
+            systemId = tmp[0];
+            roleName = tmp[1];
         }
-        return new Role(tmp[0], tmp[1]);
+        return new Role(systemId, roleName);
     }
 }
