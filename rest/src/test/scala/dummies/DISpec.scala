@@ -10,7 +10,7 @@ import io.restassured.http.ContentType
 import io.restassured.response.Response
 import org.hamcrest.Matchers._
 import org.scalatest.{FlatSpec, Matchers}
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import spray.json._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -21,9 +21,9 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
 
     val component = TestComponent(user => TestResult(user.getUserId))
 
-    import DISpecJsonSupport._
     import Routes._
     import TestUtils._
+    import DISpecJsonSupport._
     import akka.http.scaladsl.server.Directives._
 
     val routes:Route = login(handle) ~ genericGetEndpoint(component.handleWithUser)
@@ -72,7 +72,6 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
       val tokens:Tokens = asUser(userId).withPassword(password).login
 
       import DISpecJsonSupport.testPayloadFormat
-      import spray.json._
 
       val payload = "WOOZ"
       val bodyContent:String = TestPayload(payload).toJson.prettyPrint
@@ -89,14 +88,14 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
 }
 
 case class TestComponent[T](f:User=>T) {
-  def handleWithUser(user: User): () => T = {
-    () => f(user)
+  def handleWithUser(user: User):T = {
+    f(user)
   }
 }
 
 case class TestComponent2[A,B](f:User=>A=>B) {
-  def handleWithUser(user: User): A => B = {
-    a => f(user)(a)
+  def handleWithUser(user: User)(a:A):B = {
+    f(user)(a)
   }
 }
 
@@ -124,12 +123,10 @@ class LoginBuilder(endpoint:String, userId:String) {
   def withPassword(password:String): CredentialsBuilder = new CredentialsBuilder(endpoint, userId, password)
 }
 
-import dummies.CredentialsJsonSupport._
-
 class CredentialsBuilder(endpoint:String, userId:String, password:String) {
   def login:Tokens = {
 
-    val bodyContent:String = credentialsFormat.write(Credentials(userId, password)).toJson.prettyPrint
+    val bodyContent:String = Credentials(userId, password).toJson.prettyPrint
     val response:Response = given().when().log().all().contentType(ContentType.JSON).body(bodyContent).post(endpoint)
 
     response.then().statusCode(200)

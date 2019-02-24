@@ -53,11 +53,11 @@ object Routes extends LazyLogging {
     }
 
 
-  def genericGetEndpoint[T](f:User => () => T)(implicit w: JsonWriter[T]):Route =
+  def genericGetEndpoint[T](f:User => T)(implicit w: JsonWriter[T]):Route =
     path("endpoint") {
       get {
         authenticate(jwtVerifier) { user =>
-          val t:T = f(user)()
+          val t:T = f(user)
           complete(HttpEntity(ContentTypes.`application/json`, w.write(t).prettyPrint))
         }
       }
