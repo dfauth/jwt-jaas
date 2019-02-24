@@ -63,12 +63,12 @@ object Routes extends LazyLogging {
       }
     }
 
-  def genericPostEndpoint[TestPayload, TestResult](f:User => TestPayload => TestResult)(implicit aReader: RootJsonFormat[TestPayload], bWriter: RootJsonFormat[TestResult]):Route =
+  def genericPostEndpoint[A, B](f:User => A => B)(implicit aReader: RootJsonFormat[A], bWriter: RootJsonFormat[B]):Route =
     path("endpoint") {
       post {
         authenticate(jwtVerifier) { user =>
-          entity(as[TestPayload]) { a =>
-            val b:TestResult = f(user)(a)
+          entity(as[A]) { a =>
+            val b:B = f(user)(a)
             complete(HttpEntity(ContentTypes.`application/json`, bWriter.write(b).prettyPrint))
           }
         }

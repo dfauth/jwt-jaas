@@ -43,7 +43,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
         get(endPoint.endPointUrl("endpoint")).
         then().
         statusCode(200).
-        body("userId",equalTo(s"${userId}"))
+        body("payload",equalTo(s"${userId}"))
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -58,7 +58,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
 
-    val routes:Route = login(handle) ~ genericPostEndpoint(component.handleWithUser)(testPayloadFormat, testResultFormat)
+    val routes:Route = login(handle) ~ genericPostEndpoint(component.handleWithUser)
 
     val endPoint = RestEndPointServer(routes)
     implicit val loginEndpoint:String = endPoint.endPointUrl("login")
