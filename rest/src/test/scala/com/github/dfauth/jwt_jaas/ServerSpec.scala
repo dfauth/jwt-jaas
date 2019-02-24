@@ -1,4 +1,4 @@
-package dummies
+package com.github.dfauth.jwt_jaas
 
 import java.time.ZonedDateTime
 
@@ -117,7 +117,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     val jwtVerifier = new JWTVerifier(testKeyPair.getPublic)
 
 
-    import Routes._
+    import com.github.dfauth.jwt_jaas.Routes._
     val endPoint = RestEndPointServer(hello(jwtVerifier), host, port)
     val bindingFuture = endPoint.start()
 
@@ -148,7 +148,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
     val jwtVerifier = new JWTVerifier(testKeyPair.getPublic)
 
 
-    import Routes._
+    import com.github.dfauth.jwt_jaas.Routes._
     val endPoint = RestEndPointServer(hello(jwtVerifier), host, port)
     val bindingFuture = endPoint.start()
 
@@ -177,11 +177,11 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 
   "any user" should "be able to authenticate" in {
 
-    import dummies.CredentialsJsonSupport._
+    import com.github.dfauth.jwt_jaas.CredentialsJsonSupport._
 
     val component = Component("say hello to %s from a component")
 
-    import Routes._
+    import com.github.dfauth.jwt_jaas.Routes._
     val endPoint = RestEndPointServer(login(component.handle), host, port)
     val bindingFuture = endPoint.start()
 
@@ -210,11 +210,11 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 
   "any user providing the wrong password" should "not be authenticated" in {
 
-    import dummies.CredentialsJsonSupport._
+    import com.github.dfauth.jwt_jaas.CredentialsJsonSupport._
 
     val component = Component("say hello to %s from a component")
 
-    import Routes._
+    import com.github.dfauth.jwt_jaas.Routes._
     val endPoint = RestEndPointServer(login(component.handle), host, port)
     val bindingFuture = endPoint.start()
 
@@ -237,11 +237,11 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 
   "any user providing the wrong username" should "not be authenticated" in {
 
-    import dummies.CredentialsJsonSupport._
+    import com.github.dfauth.jwt_jaas.CredentialsJsonSupport._
 
     val component = Component("say hello to %s from a component")
 
-    import Routes._
+    import com.github.dfauth.jwt_jaas.Routes._
     val endPoint = RestEndPointServer(login(component.handle), host, port)
     val bindingFuture = endPoint.start()
 
@@ -264,11 +264,11 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 
   "any user providing both the wrong username and wrong password" should "not be authenticated" in {
 
-    import dummies.CredentialsJsonSupport._
+    import com.github.dfauth.jwt_jaas.CredentialsJsonSupport._
 
     val component = Component("say hello to %s from a component")
 
-    import Routes._
+    import com.github.dfauth.jwt_jaas.Routes._
     val endPoint = RestEndPointServer(login(component.handle), host, port)
     val bindingFuture = endPoint.start()
 

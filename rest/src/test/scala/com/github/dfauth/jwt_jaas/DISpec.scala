@@ -1,10 +1,10 @@
-package dummies
+package com.github.dfauth.jwt_jaas
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.Route
+import com.github.dfauth.jwt_jaas.CredentialsJsonSupport.credentialsFormat
 import com.github.dfauth.jwt_jaas.jwt.{Role, User}
 import com.typesafe.scalalogging.LazyLogging
-import dummies.CredentialsJsonSupport.credentialsFormat
 import io.restassured.RestAssured._
 import io.restassured.http.ContentType
 import io.restassured.response.Response
@@ -21,10 +21,10 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
 
     val component = TestComponent(user => TestResult(user.getUserId))
 
-    import Routes._
-    import TestUtils._
     import DISpecJsonSupport._
+    import TestUtils._
     import akka.http.scaladsl.server.Directives._
+    import com.github.dfauth.jwt_jaas.Routes._
 
     val routes:Route = login(handle) ~ genericGetEndpoint(component.handleWithUser)
 
@@ -54,9 +54,9 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
     val component = TestComponent2(user => (testPayload:TestPayload) => TestResult(s"${testPayload.payload} customised for ${user.getUserId}"))
 
     import DISpecJsonSupport._
-    import Routes._
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
+    import com.github.dfauth.jwt_jaas.Routes._
 
     val routes:Route = login(handle) ~ genericPostEndpoint(component.handleWithUser)
 
