@@ -295,9 +295,6 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 case class User1(name:String)
 case class Payload(name:String)
 case class Result(message:String)
-//class Tokens(@BeanProperty authorizationToken:String = null, @BeanProperty refreshToken:String = null, u:Unit = ()) {
-//  def this() { this(u = ()) }
-//}
 
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val payloadFormat:RootJsonFormat[Payload] = jsonFormat1(Payload)
