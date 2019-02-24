@@ -5,6 +5,7 @@ import com.github.dfauth.jwt_jaas.jwt.{Role, User}
 import io.restassured.RestAssured.given
 import io.restassured.http.ContentType
 import io.restassured.response.Response
+import io.restassured.specification.RequestSpecification
 
 object TestUtils {
 
@@ -41,5 +42,7 @@ class CredentialsBuilder(endpoint:String, userId:String, password:String) {
   }
 }
 
-case class Tokens(authorizationToken:String, refreshToken:String)
+case class Tokens(authorizationToken:String, refreshToken:String) {
+  def when():RequestSpecification = given().header("Authorization", "Bearer "+authorizationToken).when()
+}
 

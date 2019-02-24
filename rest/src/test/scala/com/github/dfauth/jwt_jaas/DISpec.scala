@@ -4,7 +4,6 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.Route
 import com.github.dfauth.jwt_jaas.jwt.User
 import com.typesafe.scalalogging.LazyLogging
-import io.restassured.RestAssured._
 import io.restassured.http.ContentType
 import io.restassured.response.Response
 import org.hamcrest.Matchers._
@@ -37,7 +36,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
       val userId:String = "fred"
       val password:String = "password"
       val tokens:Tokens = asUser(userId).withPassword(password).login
-      given().header("Authorization", "Bearer "+tokens.authorizationToken).
+      tokens.
         when().log().headers().
         get(endPoint.endPointUrl("endpoint")).
         then().
@@ -75,8 +74,11 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
       val payload = "WOOZ"
       val bodyContent:String = TestPayload(payload).toJson.prettyPrint
 
-      val response:Response = given().header("Authorization", "Bearer "+tokens.authorizationToken).
-      when().log().all().contentType(ContentType.JSON).body(bodyContent).post(endPoint.endPointUrl("endpoint"))
+      val response:Response = tokens.when.log().all().
+        contentType(ContentType.JSON).
+        body(bodyContent).
+        post(endPoint.endPointUrl("endpoint"))
+
       response.then().statusCode(200).
         body("payload",equalTo(s"${payload} customised for ${userId}"))
     } finally {
