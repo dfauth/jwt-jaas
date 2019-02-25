@@ -1,11 +1,13 @@
 package com.github.dfauth.jwt_jaas
 
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import com.github.dfauth.jwt_jaas.CredentialsJsonSupport._
 import com.github.dfauth.jwt_jaas.jwt.{Role, User}
 import io.restassured.RestAssured.given
 import io.restassured.http.ContentType
 import io.restassured.response.Response
 import io.restassured.specification.RequestSpecification
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 object TestUtils {
 
@@ -45,4 +47,14 @@ class CredentialsBuilder(endpoint:String, userId:String, password:String) {
 case class Tokens(authorizationToken:String, refreshToken:String) {
   def when():RequestSpecification = given().header("Authorization", "Bearer "+authorizationToken).when()
 }
+
+case class Payload(payload:String)
+case class Result[T](result:T)
+
+object JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
+  implicit val payloadFormat:RootJsonFormat[Payload] = jsonFormat1(Payload)
+  implicit val resultFormat:RootJsonFormat[Result[String]] = jsonFormat1(Result[String])
+  implicit val intResultFormat:RootJsonFormat[Result[Int]] = jsonFormat1(Result[Int])
+}
+
 

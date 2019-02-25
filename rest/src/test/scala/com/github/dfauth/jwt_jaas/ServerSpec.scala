@@ -2,9 +2,9 @@ package com.github.dfauth.jwt_jaas
 
 import java.time.ZonedDateTime
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post}
+import com.github.dfauth.jwt_jaas.JsonSupport._
 import com.github.dfauth.jwt_jaas.jwt.Role.role
 import com.github.dfauth.jwt_jaas.jwt._
 import com.typesafe.scalalogging.LazyLogging
@@ -17,7 +17,7 @@ import spray.json._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
+class ServerSpec extends FlatSpec with Matchers with LazyLogging {
 
   val host = "localhost"
   val port = 9000
@@ -54,7 +54,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
       path("hello") {
         post {
           entity(as[Payload]) { p =>
-            complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello to ${p.name}"}""""))
+            complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello to ${p.payload}"}""""))
           }
         }
       }
@@ -103,7 +103,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
         post(endPoint.endPointUrl("hello")).
         then().log().body(true).
         statusCode(200).
-        body("message",equalTo(s"say hello to ${name} from a component"));
+        body("result",equalTo(s"say hello to ${name} from a component"));
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -292,19 +292,9 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging with JsonSuppor
 }
 
 
-case class User1(name:String)
-case class Payload(name:String)
-case class Result(message:String)
-
-trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val payloadFormat:RootJsonFormat[Payload] = jsonFormat1(Payload)
-  implicit val resultFormat:RootJsonFormat[Result] = jsonFormat1(Result)
-}
-
-
 private case class Component(messageFormat:String) {
-  def handle(payload: Payload): Result = {
-    Result(String.format(messageFormat, payload.name))
+  def handle(payload: Payload): Result[String] = {
+    Result(String.format(messageFormat, payload.payload))
   }
   def handle(credentials:Credentials): Option[User]= {
     if(credentials.equals(Credentials("fred","password"))) {

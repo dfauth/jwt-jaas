@@ -1,8 +1,8 @@
 package com.github.dfauth.jwt_jaas
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.Route
 import com.github.dfauth.jwt_jaas.jwt.User
+import com.github.dfauth.jwt_jaas.JsonSupport._
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.http.ContentType
 import io.restassured.response.Response
@@ -13,13 +13,12 @@ import spray.json._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
+class DISpec extends FlatSpec with Matchers with LazyLogging {
 
   "any authenticated get endpoint" should "be able to propagate its user information" in {
 
-    val component = TestComponent(user => TestResult(user.getUserId))
+    val component = TestComponent(user => Result[String](user.getUserId))
 
-    import DISpecJsonSupport._
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
     import com.github.dfauth.jwt_jaas.Routes._
@@ -41,7 +40,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
         get(endPoint.endPointUrl("endpoint")).
         then().
         statusCode(200).
-        body("payload",equalTo(s"${userId}"))
+        body("result",equalTo(s"${userId}"))
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -49,9 +48,8 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
 
   "any authenticated post endpoint" should "be able to propagate its user information" in {
 
-    val component = TestComponent2(user => (testPayload:TestPayload) => TestResult(s"${testPayload.payload} customised for ${user.getUserId}"))
+    val component = TestComponent2(user => (testPayload:Payload) => Result[String](s"${testPayload.payload} customised for ${user.getUserId}"))
 
-    import DISpecJsonSupport._
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
     import com.github.dfauth.jwt_jaas.Routes._
@@ -69,10 +67,8 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
       val password:String = "password"
       val tokens:Tokens = asUser(userId).withPassword(password).login
 
-      import DISpecJsonSupport.testPayloadFormat
-
       val payload = "WOOZ"
-      val bodyContent:String = TestPayload(payload).toJson.prettyPrint
+      val bodyContent:String = Payload(payload).toJson.prettyPrint
 
       val response:Response = tokens.when.log().all().
         contentType(ContentType.JSON).
@@ -80,7 +76,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging with JsonSupport {
         post(endPoint.endPointUrl("endpoint"))
 
       response.then().statusCode(200).
-        body("payload",equalTo(s"${payload} customised for ${userId}"))
+        body("result",equalTo(s"${payload} customised for ${userId}"))
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -100,14 +96,6 @@ case class TestComponent2[A,B](f:User=>A=>B) {
   }
 }
 
-case class TestPayload(payload:String)
-case class TestResult(payload:String)
-
-
-object DISpecJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit val testPayloadFormat:RootJsonFormat[TestPayload] = jsonFormat1(TestPayload)
-  implicit val testResultFormat:RootJsonFormat[TestResult] = jsonFormat1(TestResult)
-}
 
 
 
