@@ -127,32 +127,47 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     }
   }
 
-  def compose(cache:Map[String, Double]):User => Payload => Result[Int] = {
-        val extractPayload:Payload => String  = { p =>
-          logger.info(s"extractPayload: ${p}")
-          p.payload
-        }
-        val toInt:String => Int = { s =>
-          logger.info(s"toInt: ${s}")
-          s.toInt
-        }
-        val lookup:User => Int => Double  = { user =>
-          logger.info(s"lookup: ${user}")
-          k => k * cache.getOrElse(user.getUserId, 1.0)
-        }
-        val doubleToInt:Double => Int = { d =>
-          logger.info(s"doubleToInt: ${d}")
-          (d * 1000).toInt
-        }
-        val toResult:Int => Result[Int] = { i =>
-          logger.info(s"toResult: ${i}")
-          Result[Int](i)
-        }
+  case class Widget[A,B](f:A => B)  {
 
-        val chain:User => Payload => Result[Int] = u => extractPayload andThen toInt andThen lookup(u) andThen doubleToInt andThen toResult
-        chain
+    def andThen[C](g:B => C):Widget[A,C] = Widget[A,C](f andThen g)
+
+    def build:User => A => B = user => a => f(a)
   }
 
+  def use[A,B](f:A => B) = Widget(f)
+
+  def compose(cache:Map[String, Double])(user:User): Payload => Result[Int] = {
+
+    val chain:User => Payload => Result[Int] =
+      use(extractPayload) andThen
+      toInt andThen
+      lookup(cache)(user) andThen
+      doubleToInt andThen
+      toResult build
+
+    chain(user)
+  }
+
+  val extractPayload:Payload => String  = { p =>
+    logger.info(s"extractPayload: ${p}")
+    p.payload
+  }
+  val toInt:String => Int = { s =>
+    logger.info(s"toInt: ${s}")
+    s.toInt
+  }
+  def lookup(cache:Map[String,Double]):User => Int => Double  = { user =>
+    logger.info(s"lookup: ${user}")
+    k => k * cache.getOrElse(user.getUserId, 1.0)
+  }
+  val doubleToInt:Double => Int = { d =>
+    logger.info(s"doubleToInt: ${d}")
+    (d * 1000).toInt
+  }
+  val toResult:Int => Result[Int] = { i =>
+    logger.info(s"toResult: ${i}")
+    Result[Int](i)
+  }
 }
 
 
