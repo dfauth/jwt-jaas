@@ -5,6 +5,8 @@ import java.time.{ZoneId, ZonedDateTime}
 
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post, reject}
+import akka.http.scaladsl.server.PathMatcher._
+import akka.http.scaladsl.server.PathMatchers.Remaining
 import akka.http.scaladsl.server.Route
 import com.github.dfauth.jwt_jaas.CredentialsJsonSupport._
 import com.github.dfauth.jwt_jaas.MyDirectives.{authRejection, authenticate}
@@ -53,12 +55,22 @@ object Routes extends LazyLogging {
     }
 
 
-  def genericGetEndpoint[T](f:User => T)(implicit w: JsonWriter[T]):Route =
+  def genericGet0Endpoint[T](f:User => T)(implicit w: JsonWriter[T]):Route =
     path("endpoint") {
       get {
         authenticate(jwtVerifier) { user =>
           val t:T = f(user)
           complete(HttpEntity(ContentTypes.`application/json`, w.write(t).prettyPrint))
+        }
+      }
+    }
+
+  def genericGet1Endpoint[T](f:User => String => T)(bWriter: RootJsonFormat[T]):Route =
+    path("endpoint" / Remaining) { r =>
+      get {
+        authenticate(jwtVerifier) { user =>
+          val t:T = f(user)(r)
+          complete(HttpEntity(ContentTypes.`application/json`, bWriter.write(t).prettyPrint))
         }
       }
     }

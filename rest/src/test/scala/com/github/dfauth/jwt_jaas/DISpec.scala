@@ -23,7 +23,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
     import akka.http.scaladsl.server.Directives._
     import com.github.dfauth.jwt_jaas.Routes._
 
-    val routes:Route = login(handle) ~ genericGetEndpoint(component.handleWithUser)
+    val routes:Route = login(handle) ~ genericGet0Endpoint(component.handleWithUser)
 
     val endPoint = RestEndPointServer(routes)
     implicit val loginEndpoint:String = endPoint.endPointUrl("login")
