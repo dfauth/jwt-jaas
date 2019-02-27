@@ -4,7 +4,8 @@ import java.security.KeyPair
 import java.time.{ZoneId, ZonedDateTime}
 
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post, reject}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post, reject, onComplete}
+import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.PathMatcher._
 import akka.http.scaladsl.server.PathMatchers.Remaining
 import akka.http.scaladsl.server.Route
@@ -13,6 +14,9 @@ import com.github.dfauth.jwt_jaas.MyDirectives.{authRejection, authenticate}
 import com.github.dfauth.jwt_jaas.jwt._
 import com.typesafe.scalalogging.LazyLogging
 import spray.json.{JsonWriter, RootJsonFormat}
+
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 object Routes extends LazyLogging {
 
@@ -82,6 +86,21 @@ object Routes extends LazyLogging {
           entity(as[A]) { a =>
             val b:B = f(user)(a)
             complete(HttpEntity(ContentTypes.`application/json`, bWriter.write(b).prettyPrint))
+          }
+        }
+      }
+    }
+
+  def genericPostFutureEndpoint[A, B](f:User => A => Future[B])(implicit aReader: RootJsonFormat[A], bWriter: RootJsonFormat[B]):Route =
+    path("endpoint") {
+      post {
+        authenticate(jwtVerifier) { user =>
+          entity(as[A]) { a =>
+            val b:Future[B] = f(user)(a)
+            onComplete(b) {
+              case Success(s) => complete(HttpEntity(ContentTypes.`application/json`, bWriter.write(s).prettyPrint))
+              case Failure(e) => complete((InternalServerError, s"${e.getMessage}"))
+            }
           }
         }
       }

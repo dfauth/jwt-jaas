@@ -9,8 +9,9 @@ import io.restassured.response.Response
 import org.hamcrest.Matchers._
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits._
 
 class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
@@ -144,12 +145,60 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     }
   }
 
+  "any authenticated post endpoint" should "be able to propagate its user information though a pipeline of chained functions including futures" in {
+
+    import TestUtils._
+    import akka.http.scaladsl.server.Directives._
+    import com.github.dfauth.jwt_jaas.JsonSupport._
+    import com.github.dfauth.jwt_jaas.Routes._
+    import spray.json._
+
+    val cache = Map("fred" -> 2.0)
+    val routes:Route = login(handle) ~ genericPostFutureEndpoint(composeWithFuture(cache))
+
+    val endPoint = RestEndPointServer(routes)
+    implicit val loginEndpoint:String = endPoint.endPointUrl("login")
+    val bindingFuture = endPoint.start()
+
+    Await.result(bindingFuture, 5.seconds)
+
+    try {
+      val userId:String = "fred"
+      val password:String = "password"
+      val tokens:Tokens = asUser(userId).withPassword(password).login
+
+      val payload = "2"
+      val bodyContent:String = Payload(payload).toJson.prettyPrint
+
+      val response:Response = tokens.when.log().all().
+        contentType(ContentType.JSON).
+        body(bodyContent).
+        post(endPoint.endPointUrl("endpoint"))
+
+      response.then().log.all.statusCode(200).
+        body("result",equalTo( (cache(userId)*1000).toInt*payload.toInt))
+    } finally {
+      endPoint.stop(bindingFuture)
+    }
+  }
+
   def compose(cache:Map[String, Double]): User => Payload => Result[Int] = {
     user => wrap(extractPayload).
             map[Int](toInt).
             userMap(lookup(cache)).
             map(doubleToInt).
-            map(toResult).apply(user)
+            map(toResult).
+            apply(user)
+  }
+
+  def composeWithFuture(cache:Map[String, Double]): User => Payload => Future[Result[Int]] = {
+    user => wrap(extractPayload).
+            map[Int](toInt).
+            userMap(lookup(cache)).
+            map(doubleToInt).
+            map(toResult).
+            map(toFuture).
+            apply(user)
   }
 
   val extractPayload:Payload => String  = { p =>
@@ -171,6 +220,13 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
   val toResult:Int => Result[Int] = { i =>
     logger.info(s"toResult: ${i}")
     Result[Int](i)
+  }
+  def toFuture[T]:T => Future[T] = { t =>
+    Future {
+      Thread.sleep(500)
+      logger.info(s"toFuture: ${t}")
+      t
+    }
   }
 
 }
