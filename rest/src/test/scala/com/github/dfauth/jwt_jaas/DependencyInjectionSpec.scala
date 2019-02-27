@@ -1,7 +1,7 @@
 package com.github.dfauth.jwt_jaas
 
 import akka.http.scaladsl.server.Route
-import com.github.dfauth.jwt_jaas.Assembler._
+import com.github.dfauth.jwt_jaas.ContextualPipeline._
 import com.github.dfauth.jwt_jaas.jwt.User
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.http.ContentType
@@ -185,7 +185,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
   def compose(cache:Map[String, Double]): User => Payload => Result[Int] = {
     user => wrap(extractPayload).
             map[Int](toInt).
-            userMap(lookup(cache)).
+            mapWithContext(lookup(cache)).
             map(doubleToInt).
             map(toResult).
             apply(user)
@@ -195,7 +195,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     user => wrap(extractPayload).
             map[Int](toInt).
             map(toFuture).
-            userMap(adaptFutureWithUser(lookup(cache))).
+            mapWithContext(adaptFutureWithContext(lookup(cache))).
             map(adaptFuture(doubleToInt)).
             map(adaptFuture(toResult)).
             apply(user)
