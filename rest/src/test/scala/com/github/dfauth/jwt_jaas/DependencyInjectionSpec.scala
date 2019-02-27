@@ -127,25 +127,30 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     }
   }
 
-  case class Widget[A,B](f:A => B)  {
+  case class Wrapper[A,B](f:User => A => B)  {
 
-    def andThen[C](g:B => C):Widget[A,C] = Widget[A,C](f andThen g)
+    def map[C](g: B => C):Wrapper[A,C] = userMap((user:User) => g)
 
-    def build:User => A => B = user => a => f(a)
+    def userMap[C](g: User => B => C):Wrapper[A,C] = {
+      Wrapper[A,C]((u:User) => f(u).andThen(g(u)))
+    }
+
+    def apply(u:User): A => B = f(u)
   }
 
-  def use[A,B](f:A => B) = Widget(f)
+  def wrap[A,B](f:A => B):Wrapper[A,B] = userWrap((user:User) => f)
 
-  def compose(cache:Map[String, Double])(user:User): Payload => Result[Int] = {
+  def userWrap[A,B](f:User => A => B):Wrapper[A,B] = Wrapper[A,B](f)
 
-    val chain:User => Payload => Result[Int] =
-      use(extractPayload) andThen
-      toInt andThen
-      lookup(cache)(user) andThen
-      doubleToInt andThen
-      toResult build
+  def compose(cache:Map[String, Double]): User => Payload => Result[Int] = {
 
-    chain(user)
+    val chain:Wrapper[Payload, Result[Int]] = wrap(extractPayload).
+                                              map[Int](toInt).
+                                              userMap(lookup(cache)).
+                                              map(doubleToInt).
+                                              map(toResult)
+
+    user => chain.apply(user)
   }
 
   val extractPayload:Payload => String  = { p =>
@@ -168,6 +173,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     logger.info(s"toResult: ${i}")
     Result[Int](i)
   }
+
 }
 
 
