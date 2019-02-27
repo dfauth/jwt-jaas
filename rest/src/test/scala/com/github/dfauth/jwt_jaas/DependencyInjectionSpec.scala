@@ -2,6 +2,7 @@ package com.github.dfauth.jwt_jaas
 
 import akka.http.scaladsl.server.Route
 import com.github.dfauth.jwt_jaas.jwt.User
+import com.github.dfauth.jwt_jaas.Assembler._
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.http.ContentType
 import io.restassured.response.Response
@@ -127,24 +128,9 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     }
   }
 
-  case class Wrapper[A,B](f:User => A => B)  {
-
-    def map[C](g: B => C):Wrapper[A,C] = userMap((user:User) => g)
-
-    def userMap[C](g: User => B => C):Wrapper[A,C] = {
-      Wrapper[A,C]((u:User) => f(u).andThen(g(u)))
-    }
-
-    def apply(u:User): A => B = f(u)
-  }
-
-  def wrap[A,B](f:A => B):Wrapper[A,B] = userWrap((user:User) => f)
-
-  def userWrap[A,B](f:User => A => B):Wrapper[A,B] = Wrapper[A,B](f)
-
   def compose(cache:Map[String, Double]): User => Payload => Result[Int] = {
 
-    val chain:Wrapper[Payload, Result[Int]] = wrap(extractPayload).
+    val chain:Assembler[Payload, Result[Int]] = wrap(extractPayload).
                                               map[Int](toInt).
                                               userMap(lookup(cache)).
                                               map(doubleToInt).
