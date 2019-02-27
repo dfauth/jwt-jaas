@@ -1,17 +1,17 @@
 package com.github.dfauth.jwt_jaas
 
 import akka.http.scaladsl.server.Route
-import com.github.dfauth.jwt_jaas.jwt.User
 import com.github.dfauth.jwt_jaas.Assembler._
+import com.github.dfauth.jwt_jaas.jwt.User
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.http.ContentType
 import io.restassured.response.Response
 import org.hamcrest.Matchers._
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
@@ -191,13 +191,21 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
             apply(user)
   }
 
+  def adaptFutureWithUser[A,B](f: User => A => B): User => Future[A] => Future[B] = {
+    user => fa => fa.map(f(user)(_))
+  }
+
+  def adaptFuture[A,B](f: A => B): Future[A] => Future[B] = {
+    fa => fa.map(f(_))
+  }
+
   def composeWithFuture(cache:Map[String, Double]): User => Payload => Future[Result[Int]] = {
     user => wrap(extractPayload).
             map[Int](toInt).
-            userMap(lookup(cache)).
-            map(doubleToInt).
-            map(toResult).
             map(toFuture).
+            userMap(adaptFutureWithUser(lookup(cache))).
+            map(adaptFuture(doubleToInt)).
+            map(adaptFuture(toResult)).
             apply(user)
   }
 
