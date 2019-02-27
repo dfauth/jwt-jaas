@@ -123,20 +123,33 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
       response.then().log.all.statusCode(200).
         body("result",equalTo( (cache(userId)*1000).toInt*payload.toInt))
+    } finally {}
+    try {
+      val userId:String = "wilma"
+      val password:String = "password"
+      val tokens:Tokens = asUser(userId).withPassword(password).login
+
+      val payload = "2"
+      val bodyContent:String = Payload(payload).toJson.prettyPrint
+
+      val response:Response = tokens.when.log().all().
+        contentType(ContentType.JSON).
+        body(bodyContent).
+        post(endPoint.endPointUrl("endpoint"))
+
+      response.then().log.all.statusCode(200).
+        body("result",equalTo(1000*payload.toInt))
     } finally {
       endPoint.stop(bindingFuture)
     }
   }
 
   def compose(cache:Map[String, Double]): User => Payload => Result[Int] = {
-
-    val chain:Assembler[Payload, Result[Int]] = wrap(extractPayload).
-                                              map[Int](toInt).
-                                              userMap(lookup(cache)).
-                                              map(doubleToInt).
-                                              map(toResult)
-
-    user => chain.apply(user)
+    user => wrap(extractPayload).
+            map[Int](toInt).
+            userMap(lookup(cache)).
+            map(doubleToInt).
+            map(toResult).apply(user)
   }
 
   val extractPayload:Payload => String  = { p =>

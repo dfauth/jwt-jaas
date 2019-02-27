@@ -12,10 +12,10 @@ import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 object TestUtils {
 
   def handle(credentials:Credentials): Option[User]= {
-    if(credentials.equals(Credentials("fred","password"))) {
-      Some(User.of("fred", Role.role("admin"), Role.role("user")))
-    } else {
-      None
+    credentials match {
+      case Credentials("fred", "password") => Some(User.of("fred", Role.role("admin"), Role.role("user")))
+      case Credentials("wilma", "password") => Some(User.of("wilma", Role.role("user")))
+      case _ => None
     }
   }
   def asUser(userId: String)(implicit endpoint:String):LoginBuilder = new LoginBuilder(endpoint,userId)
