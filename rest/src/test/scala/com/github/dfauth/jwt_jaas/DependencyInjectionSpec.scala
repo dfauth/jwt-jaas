@@ -191,14 +191,6 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
             apply(user)
   }
 
-  def adaptFutureWithUser[A,B](f: User => A => B): User => Future[A] => Future[B] = {
-    user => fa => fa.map(f(user)(_))
-  }
-
-  def adaptFuture[A,B](f: A => B): Future[A] => Future[B] = {
-    fa => fa.map(f(_))
-  }
-
   def composeWithFuture(cache:Map[String, Double]): User => Payload => Future[Result[Int]] = {
     user => wrap(extractPayload).
             map[Int](toInt).
