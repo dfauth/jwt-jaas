@@ -153,8 +153,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     import com.github.dfauth.jwt_jaas.Routes._
     import spray.json._
 
-    val cache = Map("fred" -> 2.0)
-    val routes:Route = login(handle) ~ genericPostFutureEndpoint(composeWithFuture(cache))
+    val routes:Route = login(handle) ~ genericPostFutureEndpoint(composeWithFuture)
 
     val endPoint = RestEndPointServer(routes)
     implicit val loginEndpoint:String = endPoint.endPointUrl("login")
@@ -176,7 +175,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
         post(endPoint.endPointUrl("endpoint"))
 
       response.then().log.all.statusCode(200).
-        body("result",equalTo( (cache(userId)*1000).toInt*payload.toInt))
+        body("result",equalTo( (userFactorCache.cache(userId)*1000).toInt*payload.toInt))
     } finally {
       endPoint.stop(bindingFuture)
     }
@@ -191,11 +190,11 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
             apply(user)
   }
 
-  def composeWithFuture(cache:Map[String, Double]): User => Payload => Future[Result[Int]] = {
+  def composeWithFuture: User => Payload => Future[Result[Int]] = {
     user => wrap(extractPayload).
             map[Int](toInt).
             map(toFuture).
-            mapWithContext(adaptFutureWithContext(lookup(cache))).
+            mapWithContext(adaptFutureWithContext(lookup(userFactorCache.cache))).
             map(adaptFuture(doubleToInt)).
             map(adaptFuture(toResult)).
             apply(user)
@@ -227,6 +226,10 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
       logger.info(s"toFuture: ${t}")
       t
     }
+  }
+
+  object userFactorCache {
+    val cache = Map("fred" -> 2.0)
   }
 
 }
