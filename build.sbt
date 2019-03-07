@@ -3,6 +3,7 @@ name := "jwt-jaas"
 version := "0.1"
 
 scalaVersion := "2.12.6"
+val kafkaVersion = "2.1.1"
 
 
 //scala deps
@@ -11,13 +12,17 @@ val scalatest = "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 // val scalatest_testng = "org.scalatest" %% "scalatest-testng" % "3.0.0-SNAP13"
 val akkaHttp = "com.typesafe.akka" %% "akka-http"   % "latest.release"
 val akkaStream = "com.typesafe.akka" %% "akka-stream" % "latest.release"
-val akkaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "latest.release"
+val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "latest.release"
 val playJson = "com.typesafe.play" %% "play-json" % "latest.release"
 val akkaHttpSprayJson = "com.typesafe.akka" %% "akka-http-spray-json" % "latest.release"
 val jwtAkkaHttp = "com.emarsys" %% "jwt-akka-http" % "latest.release"
-val restAssurredScalaSupport = "io.rest-assured" % "scala-support" % "latest.release"
+val restAssurredScalaSupport = "io.rest-assured" %% "scala-support" % "latest.release"
+val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.1" % Test
+val kafkaCore = "org.apache.kafka" %% "kafka" % kafkaVersion
+val embeddedKafkaStreams = "net.manub" %% "scalatest-embedded-kafka-streams" % "2.0.0" % Test
+// val kafkaTest = "org.apache.kafka" %% "test" % "latest.release" % "test" //"1.2.2.RELEASE"
 
-val commonScalaDeps = Seq(scalactic, scalatest, akkaHttpSprayJson, akkaLogging)
+val commonScalaDeps = Seq(scalactic, scalatest, akkaHttpSprayJson, scalaLogging)
 
 // java deps
 val testng = "org.testng" % "testng" % "latest.release" % "test"
@@ -29,11 +34,17 @@ val hamcrest = "org.hamcrest" % "hamcrest-all" % "latest.release"
 val jjwt_api = "io.jsonwebtoken" % "jjwt-api" % "latest.release" //% "compile"
 val jjwt_impl = "io.jsonwebtoken" % "jjwt-impl" % "latest.release" //% "runtime,test"
 val jjwt_jackson = "io.jsonwebtoken" % "jjwt-jackson" % "latest.release" //% "runtime"
+val javax_ws_rs = "javax.ws.rs" % "javax.ws.rs-api" % "2.1.1" % Test
 //val jackson_databind = "com.fasterxml.jackson.core" % "jackson-databind" % "latest.release"
 
+val kafkaStreams = "org.apache.kafka" % "kafka-streams" % kafkaVersion
+
+// val kafkaClient = "org.apache.kafka" % "kafka-clients" % "2.0.1" // latest.release"
+//val springKafka = "org.springframework.kafka" % "spring-kafka" % "2.2.4.RELEASE" //"latest.release" //"1.2.2.RELEASE"
+//val springKafkaTest = "org.springframework.kafka" % "spring-kafka-test" % "2.2.4.RELEASE" % Test //"1.2.2.RELEASE"
 
 
-val commonJavaDeps = Seq(slf4j, logback)
+val commonJavaDeps = Seq(slf4j, logback, testng)
 
 lazy val jwt = (project in file("jwt"))
   .settings(
@@ -58,6 +69,20 @@ lazy val rest = (project in file("rest"))
     )
   ).dependsOn(jwt)
 
+lazy val kafka = (project in file("kafka"))
+  .settings(
+    libraryDependencies ++= commonScalaDeps,
+    libraryDependencies ++= Seq(
+      embeddedKafka,
+      embeddedKafkaStreams,
+      javax_ws_rs,
+      logback
+    )
+  )
+
 lazy val root = (project in file("."))
-  .aggregate(rest, jwt)
+  .aggregate(rest, jwt, kafka)
+
+
+
 
