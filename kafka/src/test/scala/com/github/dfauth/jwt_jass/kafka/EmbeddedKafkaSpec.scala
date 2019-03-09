@@ -1,81 +1,25 @@
 package com.github.dfauth.jwt_jass.kafka
 
-import net.manub.embeddedkafka.Codecs._
-import net.manub.embeddedkafka.ConsumerExtensions._
-import net.manub.embeddedkafka.EmbeddedKafkaConfig
-import net.manub.embeddedkafka.streams.EmbeddedKafkaStreamsAllInOne
-import org.apache.kafka.common.serialization.{Serde, Serdes}
-import org.apache.kafka.streams.StreamsBuilder
-import org.apache.kafka.streams.kstream.{Consumed, KStream, Produced}
-import org.scalatest.{Matchers, WordSpec}
+import net.manub.embeddedkafka.EmbeddedKafka
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.scalatest.{FlatSpec, Matchers}
 
-class ExampleKafkaSpec
-  extends WordSpec
+class EmbeddedKafkaSpec
+  extends FlatSpec
     with Matchers
-    with EmbeddedKafkaStreamsAllInOne {
+    with EmbeddedKafka {
 
-  import net.manub.embeddedkafka.Codecs.stringKeyValueCrDecoder
+  val TOPIC = "testTopic"
 
-  implicit val config: EmbeddedKafkaConfig =
-    EmbeddedKafkaConfig(kafkaPort = 7000, zooKeeperPort = 7001)
+  "runs with embedded kafka" should "work" in {
 
-  val (inTopic, outTopic) = ("in", "out")
+    implicit val a = new StringDeserializer()
 
-  val stringSerde: Serde[String] = Serdes.String()
-
-  "A Kafka streams test" should {
-    "be easy to run with streams and consumer lifecycle management" in {
-      val streamBuilder = new StreamsBuilder
-      val stream: KStream[String, String] =
-        streamBuilder.stream(inTopic, Consumed.`with`(stringSerde, stringSerde))
-
-      stream.to(outTopic, Produced.`with`(stringSerde, stringSerde))
-
-      runStreams(Seq(inTopic, outTopic), streamBuilder.build()) {
-        publishToKafka(inTopic, "hello", "world")
-        publishToKafka(inTopic, "foo", "bar")
-        publishToKafka(inTopic, "baz", "yaz")
-        withConsumer[String, String, Unit] { consumer =>
-          val consumedMessages: Stream[(String, String)] =
-            consumer.consumeLazily(outTopic)
-          consumedMessages.take(2) should be(
-            Seq("hello" -> "world", "foo" -> "bar"))
-          val h :: _ = consumedMessages.drop(2).toList
-          h should be("baz" -> "yaz")
-        }
-      }
-    }
-
-    "allow support creating custom consumers" in {
-      val streamBuilder = new StreamsBuilder
-      val stream: KStream[String, String] =
-        streamBuilder.stream(inTopic, Consumed.`with`(stringSerde, stringSerde))
-
-      stream.to(outTopic, Produced.`with`(stringSerde, stringSerde))
-
-      runStreams(Seq(inTopic, outTopic), streamBuilder.build()) {
-        publishToKafka(inTopic, "hello", "world")
-        publishToKafka(inTopic, "foo", "bar")
-        val consumer = newConsumer[String, String]()
-        consumer.consumeLazily[(String, String)](outTopic).take(2) should be(
-          Seq("hello" -> "world", "foo" -> "bar"))
-        consumer.close()
-      }
-    }
-
-    "allow for easy string based testing" in {
-      val streamBuilder = new StreamsBuilder
-      val stream: KStream[String, String] =
-        streamBuilder.stream(inTopic, Consumed.`with`(stringSerde, stringSerde))
-
-      stream.to(outTopic, Produced.`with`(stringSerde, stringSerde))
-
-      runStreamsWithStringConsumer(Seq(inTopic, outTopic),
-        streamBuilder.build()) { consumer =>
-        publishToKafka(inTopic, "hello", "world")
-        val h :: _ = consumer.consumeLazily[(String, String)](outTopic).toList
-        h should be("hello" -> "world")
-      }
+    withRunningKafka {
+      publishStringMessageToKafka(TOPIC, "testMessage")
+      val msg:String = consumeFirstMessageFrom(TOPIC)
+      msg should be ("testMessage")
     }
   }
+
 }
