@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt_jass.kafka
+package com.github.dfauth.jwt_jaas.kafka
 
 import net.manub.embeddedkafka.Codecs._
 import net.manub.embeddedkafka.ConsumerExtensions._

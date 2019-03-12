@@ -39,7 +39,8 @@ val javax_ws_rs = "javax.ws.rs" % "javax.ws.rs-api" % "2.1.1" % Test
 
 val kafkaStreams = "org.apache.kafka" % "kafka-streams" % kafkaVersion
 
-// val kafkaClient = "org.apache.kafka" % "kafka-clients" % "2.0.1" // latest.release"
+val kafkaClient = "org.apache.kafka" % "kafka-clients" % kafkaVersion
+
 //val springKafka = "org.springframework.kafka" % "spring-kafka" % "2.2.4.RELEASE" //"latest.release" //"1.2.2.RELEASE"
 //val springKafkaTest = "org.springframework.kafka" % "spring-kafka-test" % "2.2.4.RELEASE" % Test //"1.2.2.RELEASE"
 
@@ -73,6 +74,7 @@ lazy val kafka = (project in file("kafka"))
   .settings(
     libraryDependencies ++= commonScalaDeps,
     libraryDependencies ++= Seq(
+      kafkaClient,
       embeddedKafka,
       embeddedKafkaStreams,
       javax_ws_rs,

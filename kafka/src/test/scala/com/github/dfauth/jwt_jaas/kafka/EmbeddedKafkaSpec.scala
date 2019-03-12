@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt_jass.kafka
+package com.github.dfauth.jwt_jaas.kafka
 
 import java.util.Collections
 
