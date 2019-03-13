@@ -34,6 +34,12 @@ class AnotherEmbeddedKafkaSpec
         val msg = consumer.subscribe()
         msg should be("testMessage")
 
+//        implicit val d = new StringDeserializer
+//        publishStringMessageToKafka(TOPIC, "testMessage")
+//        val msg:String = consumeFirstMessageFrom(TOPIC)
+//        msg should be ("testMessage")
+
+
       }
     } catch {
       case e:RuntimeException => {

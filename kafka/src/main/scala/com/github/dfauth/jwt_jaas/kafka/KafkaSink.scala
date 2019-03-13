@@ -19,11 +19,11 @@ class KafkaSink[V](topic: String,
 
 
   val props1:Map[String, Object] = props ++ Map[String, Object](
-    "bootstrap.servers" -> zookeeperConnect,
+    "bootstrap.servers" -> brokerList,
 //    "broker.list" -> brokerList,
     "key.serializer" -> classOf[StringSerializer],
     "value.serializer" -> classOf[StringSerializer],
-//    "client.id" -> groupId
+    "client.id" -> groupId
   )
 
   private val producer = new KafkaProducer[String, V](props1.asJava)

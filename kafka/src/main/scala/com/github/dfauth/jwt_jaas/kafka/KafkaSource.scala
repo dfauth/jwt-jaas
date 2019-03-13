@@ -1,5 +1,6 @@
 package com.github.dfauth.jwt_jaas.kafka
 
+import java.util.stream.{Collectors, StreamSupport}
 import java.util.{Collections, UUID}
 
 import com.typesafe.scalalogging.LazyLogging
@@ -23,8 +24,8 @@ class KafkaSource[V](topic: String,
   private val TIMEOUT = 1000
 
   val props1:Map[String, Object] = props ++ Map(
-//    "group.id" -> groupId,
-    "bootstrap.servers" -> zookeeperConnect,
+    "group.id" -> groupId,
+    "bootstrap.servers" -> brokerList,
 //    "broker.list" -> brokerList,
     "key.deserializer" -> classOf[StringDeserializer],
     "value.deserializer" -> classOf[StringDeserializer]
@@ -44,9 +45,13 @@ class KafkaSource[V](topic: String,
     }
   }
 
-  def subscribe():ConsumerRecords[String, V] = {
+  def subscribe():Set[V] = {
     connector.subscribe(Collections.singleton(topic))
-    connector.poll(TIMEOUT)
+    val consumerRecords:ConsumerRecords[String, V] = connector.poll(TIMEOUT)
+
+    val t:java.util.stream.Stream[V] = StreamSupport.stream[ConsumerRecord[String, V]](consumerRecords.spliterator(), false).map[V](_.value) //
+    val c:java.util.List[V] = t.collect(Collectors.toList[V])
+    c.asScalaSet[V]
   }
 
   def close(f:Future[Unit], timeOut:Int, units:TimeUnit): Unit = {
