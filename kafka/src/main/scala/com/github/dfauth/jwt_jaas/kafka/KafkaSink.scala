@@ -1,35 +1,32 @@
 package com.github.dfauth.jwt_jaas.kafka
 
-import java.util.{Properties, UUID}
+import java.util.UUID
 
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.StringSerializer
 
+import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
+
 
 
 class KafkaSink[V](topic: String,
                 groupId: String = UUID.randomUUID().toString,
-                zookeeperConnect: String = "localhost:2181",
-                   brokerList:String = "localhost:9092")
+                zookeeperConnect: String = "localhost:6000",
+                   brokerList:String = "localhost:6001", props:Map[String,Object] = Map.empty)
   extends LazyLogging {
 
 
-  private val props = new Properties()
+  val props1:Map[String, Object] = props ++ Map[String, Object](
+    "bootstrap.servers" -> zookeeperConnect,
+//    "broker.list" -> brokerList,
+    "key.serializer" -> classOf[StringSerializer],
+    "value.serializer" -> classOf[StringSerializer],
+//    "client.id" -> groupId
+  )
 
-  props.put("bootstrap.servers", zookeeperConnect)
-  props.put("broker.list", brokerList)
-  props.put("producer.type", "async")
-  props.put("batch.num.messages", "200")
-//  props.put("metadata.broker.list", brokerList)
-  props.put("message.send.max.retries", "5")
-  props.put("request.required.acks", "-1")
-  props.put("key.serializer", classOf[StringSerializer])
-  props.put("value.serializer", classOf[StringSerializer])
-  props.put("client.id", groupId)
-
-  private val producer = new KafkaProducer[String, V](props)
+  private val producer = new KafkaProducer[String, V](props1.asJava)
 
   def send(message: V): Try[Int] = send(List(message))
 
