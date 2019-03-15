@@ -3,11 +3,12 @@ package com.github.dfauth.jwt_jaas.kafka
 import java.util.UUID
 
 import com.typesafe.scalalogging.LazyLogging
-import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.StringSerializer
 
 import scala.collection.JavaConverters._
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 
@@ -28,22 +29,18 @@ class KafkaSink[V](topic: String,
 
   private val producer = new KafkaProducer[String, V](props1.asJava)
 
-  def send(message: V): Try[Int] = send(List(message))
+  def send(message: V):Future[RecordMetadata] = send(List(message)).find(a => true).get
 
-  def send(messages: Seq[V]): Try[Int] =
-    try {
-      val queueMessages = messages.map { message => new ProducerRecord[String, V](topic, message) }
-      queueMessages.foreach(producer.send(_,new Callback(){
-        override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = {
-
-        }
-      }))
-      Success(queueMessages.size)
-    } catch {
-      case ex: Exception =>
-        logger.error(ex.getMessage, ex)
-        Failure(ex)
-    }
+  def send(messages: Seq[V]): Seq[Future[RecordMetadata]] = {
+    val queueMessages = messages.map { message => new ProducerRecord[String, V](topic, message) }
+    queueMessages.map(producer.send(_,(metadata: RecordMetadata, e: Exception) => {
+      if(e == null) {
+        logger.info(s"metadata: ${metadata}")
+      } else {
+        logger.error(e.getMessage,e)
+      }
+    })).map(v => Future(v.get()))
+  }
 
 
 }

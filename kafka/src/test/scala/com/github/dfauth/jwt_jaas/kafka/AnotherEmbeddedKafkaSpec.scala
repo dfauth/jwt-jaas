@@ -2,7 +2,11 @@ package com.github.dfauth.jwt_jaas.kafka
 
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.{FlatSpec, Matchers}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 class AnotherEmbeddedKafkaSpec
   extends FlatSpec
@@ -25,19 +29,23 @@ class AnotherEmbeddedKafkaSpec
           brokerList = brokerList,
           props = config.customProducerProperties
         )
-        producer.send("testMessage")
-        val consumer = new KafkaSource[String](TOPIC,
+        val consumer = new KafkaSource[String](TOPIC,new StringDeserializer,
           zookeeperConnect = zookeeperConnectString,
           brokerList = brokerList,
           props = config.customConsumerProperties
         )
-        val msg = consumer.subscribe()
-        msg should be("testMessage")
+        producer.send("testMessage").onComplete {
+          case Success(r) => {
+            logger.info(s"success: ${r}")
+          }
+          case Failure(f) => {
+            logger.error(f.getMessage, f)
+          }
+        }
 
-//        implicit val d = new StringDeserializer
-//        publishStringMessageToKafka(TOPIC, "testMessage")
-//        val msg:String = consumeFirstMessageFrom(TOPIC)
-//        msg should be ("testMessage")
+        consumer.getOneMessage().map(_ should be ("testMessage")).getOrElse(fail("Oops expecting testMessage"))
+        val msg1:String = consumeFirstMessageFrom[String](TOPIC)(config, new StringDeserializer)
+        msg1 should be ("testMessage")
 
 
       }
