@@ -32,6 +32,8 @@ class KafkaSource[V](topic: String,
 //    "broker.list" -> brokerList,
 //    "key.deserializer" -> classOf[StringDeserializer],
 //    "value.deserializer" -> classOf[deserializer]
+    "auto.offset.reset" -> "earliest",
+    "enable.auto.commit" -> "false"
   )
 
   var closed = false
