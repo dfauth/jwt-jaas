@@ -1,6 +1,7 @@
 package com.github.dfauth.jwt_jaas.kafka
 
 import java.util
+import java.util.concurrent.TimeUnit
 import java.util.stream.{Collectors, StreamSupport}
 import java.util.{Collections, UUID}
 
@@ -11,7 +12,7 @@ import org.apache.kafka.common.serialization.{Deserializer, StringDeserializer}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, TimeUnit}
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
 
@@ -24,7 +25,7 @@ class KafkaSource[V](topic: String,
                      props:Map[String, Object] = Map.empty[String,Object])
   extends LazyLogging {
 
-  private val TIMEOUT = 1000
+  private val TIMEOUT = java.time.Duration.ofSeconds(10)
 
   val props1:Map[String, Object] = props ++ Map(
     "group.id" -> groupId,

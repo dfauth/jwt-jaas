@@ -17,7 +17,7 @@ val playJson = "com.typesafe.play" %% "play-json" % "latest.release"
 val akkaHttpSprayJson = "com.typesafe.akka" %% "akka-http-spray-json" % "latest.release"
 val jwtAkkaHttp = "com.emarsys" %% "jwt-akka-http" % "latest.release"
 val restAssurredScalaSupport = "io.rest-assured" %% "scala-support" % "latest.release"
-val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.1" % Test
+val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.1" % Test withSources()
 val kafkaCore = "org.apache.kafka" %% "kafka" % kafkaVersion
 val embeddedKafkaStreams = "net.manub" %% "scalatest-embedded-kafka-streams" % "2.0.0" % Test
 // val kafkaTest = "org.apache.kafka" %% "test" % "latest.release" % "test" //"1.2.2.RELEASE"
@@ -37,9 +37,9 @@ val jjwt_jackson = "io.jsonwebtoken" % "jjwt-jackson" % "latest.release" //% "ru
 val javax_ws_rs = "javax.ws.rs" % "javax.ws.rs-api" % "2.1.1" % Test
 //val jackson_databind = "com.fasterxml.jackson.core" % "jackson-databind" % "latest.release"
 
-val kafkaStreams = "org.apache.kafka" % "kafka-streams" % kafkaVersion
+val kafkaStreams = "org.apache.kafka" % "kafka-streams" % kafkaVersion withSources()
 
-val kafkaClient = "org.apache.kafka" % "kafka-clients" % kafkaVersion
+val kafkaClient = "org.apache.kafka" % "kafka-clients" % kafkaVersion withSources()
 
 //val springKafka = "org.springframework.kafka" % "spring-kafka" % "2.2.4.RELEASE" //"latest.release" //"1.2.2.RELEASE"
 //val springKafkaTest = "org.springframework.kafka" % "spring-kafka-test" % "2.2.4.RELEASE" % Test //"1.2.2.RELEASE"

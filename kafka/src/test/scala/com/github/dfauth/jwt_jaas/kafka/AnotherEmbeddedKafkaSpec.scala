@@ -1,14 +1,11 @@
 package com.github.dfauth.jwt_jaas.kafka
 
-import java.util.concurrent.TimeUnit
-
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
 class AnotherEmbeddedKafkaSpec
@@ -18,7 +15,7 @@ class AnotherEmbeddedKafkaSpec
     with LazyLogging {
 
   val TOPIC = "testTopic"
-  override protected val consumerPollingTimeout: FiniteDuration = FiniteDuration(5000, TimeUnit.SECONDS)
+//  val consumerPollingTimeout: FiniteDuration = FiniteDuration(5000, TimeUnit.SECONDS)
 
   "runs with embedded kafka and manually starts/stops the server" should "work for strings" in {
 
@@ -48,10 +45,6 @@ class AnotherEmbeddedKafkaSpec
         }
 
         consumer.getOneMessage().map(_ should be ("testMessage")).getOrElse(fail("Oops expecting testMessage"))
-        val msg1:String = consumeFirstMessageFrom[String](TOPIC)(config, new StringDeserializer)
-        msg1 should be ("testMessage")
-
-
       }
     } catch {
       case e:RuntimeException => {
