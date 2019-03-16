@@ -24,15 +24,11 @@ public class KafkaProducer<V> {
     public KafkaProducer(String topic, String groupId, String zookeeperConnectString, String brokerList, Map<String, Object> props) {
         this.topic = topic;
         this.props = new HashMap(props);
-        props.put("bootstrap.servers", brokerList);
-        props.put("key.serializer", StringSerializer.class);
-        props.put("value.serializer", StringSerializer.class);
-        props.put("client.id", groupId);
-    }
-
-    public KafkaProducer start() {
-        this.producer = new org.apache.kafka.clients.producer.KafkaProducer<String, V>(props);
-        return this;
+        this.props.put("bootstrap.servers", brokerList);
+//        this.props.put("key.serializer", StringSerializer.class);
+//        this.props.put("value.serializer", StringSerializer.class);
+        this.props.put("client.id", groupId);
+        this.producer = new org.apache.kafka.clients.producer.KafkaProducer(this.props, new StringSerializer(), new StringSerializer());
     }
 
     public KafkaProducer stop() {
@@ -68,40 +64,14 @@ public class KafkaProducer<V> {
                 ).collect(Collectors.toSet());
     }
 
-    public static class NestedBuilder implements Builder<KafkaProducer> {
-
-        private final String topic;
-        private String groupId = UUID.randomUUID().toString();
-        private String zookeeperConnect = "localhost:2181";
-        private String brokerList = "localhost:9092";
-        private Map<String, Object> props = Collections.emptyMap();
+    public static class NestedBuilder extends AbstractKafkaBuilder<KafkaProducer> {
 
         public static NestedBuilder of(String topic) {
             return new NestedBuilder(topic);
         }
 
         public NestedBuilder(String topic) {
-            this.topic = topic;
-        }
-
-        public NestedBuilder withGroupId(String groupId) {
-            this.groupId = groupId;
-            return this;
-        }
-
-        public NestedBuilder withZookeeperConnect(String zk) {
-            this.zookeeperConnect = zk;
-            return this;
-        }
-
-        public NestedBuilder withBrokerList(String bl) {
-            this.brokerList = bl;
-            return this;
-        }
-
-        public NestedBuilder withProperties(Map<String, Object> props) {
-            this.props = props;
-            return this;
+            super(topic);
         }
 
         @Override

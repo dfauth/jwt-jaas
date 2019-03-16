@@ -3,7 +3,7 @@ package com.github.dfauth.jwt_jaas.kafka
 import java.util.UUID
 
 import com.typesafe.scalalogging.LazyLogging
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.StringSerializer
 
 import scala.collection.JavaConverters._
@@ -27,7 +27,7 @@ case class KafkaSink[V](topic: String,
     "client.id" -> groupId
   )
 
-  private val producer = new KafkaProducer[String, V](props1.asJava)
+  private val producer = new org.apache.kafka.clients.producer.KafkaProducer[String, V](props1.asJava)
 
   def send(message: V):Future[RecordMetadata] = send(List(message)).find(a => true).get
 

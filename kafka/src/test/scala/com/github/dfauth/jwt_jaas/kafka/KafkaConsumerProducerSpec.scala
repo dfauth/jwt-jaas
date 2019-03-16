@@ -2,10 +2,7 @@ package com.github.dfauth.jwt_jaas.kafka
 
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.{FlatSpec, Matchers}
-
-import scala.collection.JavaConverters._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
@@ -25,13 +22,9 @@ class KafkaConsumerProducerSpec
       withRunningKafkaOnFoundPort(EmbeddedKafkaConfig(kafkaPort = 9092, zooKeeperPort = 2181)) { implicit config =>
         val zookeeperConnectString = "localhost:" + config.zooKeeperPort
         val brokerList = "localhost:" + config.kafkaPort
-        val producer = KafkaProducerWrapper[String](TOPIC, brokerList, props = config.customProducerProperties)
+        val producer = KafkaProducerWrapper[String](TOPIC, brokerList = brokerList, zookeeperConnect = zookeeperConnectString, props = config.customProducerProperties)
 
-        val consumer = new KafkaConsumer[String](TOPIC,new StringDeserializer,
-          zookeeperConnect = zookeeperConnectString,
-          brokerList = brokerList,
-          props = config.customConsumerProperties
-        )
+        val consumer = new KafkaConsumerWrapper[String](TOPIC, brokerList = brokerList, zookeeperConnect = zookeeperConnectString, props = config.customConsumerProperties)
         producer.send("testMessage").onComplete {
           case Success(r) => {
             logger.info(s"success: ${r}")
@@ -41,7 +34,9 @@ class KafkaConsumerProducerSpec
           }
         }
 
-        consumer.getOneMessage().map(_ should be ("testMessage")).getOrElse(fail("Oops expecting testMessage"))
+        consumer.getOneMessage().map(m => m should be ("testMessage")).getOrElse(fail("Oops expecting testMessage"))
+//        val msg:String = consumeFirstMessageFrom(TOPIC)(config, new StringDeserializer)
+//        msg should be ("testMessage")
       }
     } catch {
       case e:RuntimeException => {

@@ -6,7 +6,7 @@ import java.util.stream.{Collectors, StreamSupport}
 import java.util.{Collections, UUID}
 
 import com.typesafe.scalalogging.LazyLogging
-import org.apache.kafka.clients.consumer.{ConsumerRecord, ConsumerRecords, KafkaConsumer, OffsetAndMetadata}
+import org.apache.kafka.clients.consumer.{ConsumerRecord, ConsumerRecords, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.{Deserializer, StringDeserializer}
 
@@ -39,7 +39,7 @@ case class KafkaSource[V](topic: String,
 
   var closed = false
 
-  private val consumer = new KafkaConsumer[String,V](props1.asJava, new StringDeserializer, deserializer)
+  private val consumer = new org.apache.kafka.clients.consumer.KafkaConsumer[String,V](props1.asJava, new StringDeserializer, deserializer)
 
 
   def subscribe(action: java.util.function.Consumer[_ >: ConsumerRecord[String, V]]): Future[Unit] = {
