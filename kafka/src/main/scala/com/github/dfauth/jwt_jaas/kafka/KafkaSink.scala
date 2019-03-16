@@ -12,7 +12,7 @@ import scala.concurrent.Future
 
 
 
-class KafkaSink[V](topic: String,
+case class KafkaSink[V](topic: String,
                 groupId: String = UUID.randomUUID().toString,
                 zookeeperConnect: String = "localhost:6000",
                    brokerList:String = "localhost:6001", props:Map[String,Object] = Map.empty)

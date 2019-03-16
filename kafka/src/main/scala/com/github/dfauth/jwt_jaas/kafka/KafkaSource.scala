@@ -17,7 +17,7 @@ import scala.concurrent.{Await, Future}
 
 
 
-class KafkaSource[V](topic: String,
+case class KafkaSource[V](topic: String,
                                            deserializer: Deserializer[V],
                   groupId: String = UUID.randomUUID().toString,
                   zookeeperConnect: String = "localhost:6000",
