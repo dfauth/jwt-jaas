@@ -35,10 +35,10 @@ case class KafkaConsumerWrapper[V](topic: String,
                                    props:Map[String,Object] = Map.empty) extends LazyLogging {
   val consumer = new KafkaConsumer[V](topic, groupId, zookeeperConnect, brokerList, props.asJava)
 
-  def getMessages(n: Int): Seq[V] = {
-    consumer.getMessages(n).asScala.toSeq
+  def getMessages(n: Int, timeout:Int = 5000): Seq[V] = {
+    consumer.getMessages(n, timeout).asScala.toSeq
   }
 
-  def getOneMessage():Option[V] = getMessages(1).find(_ => true)
+  def getOneMessage(timeout:Int = 5000):Option[V] = getMessages(1, timeout).find(_ => true)
 }
 

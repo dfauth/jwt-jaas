@@ -35,8 +35,6 @@ class KafkaConsumerProducerSpec
         }
 
         consumer.getOneMessage().map(m => m should be ("testMessage")).getOrElse(fail("Oops expecting testMessage"))
-//        val msg:String = consumeFirstMessageFrom(TOPIC)(config, new StringDeserializer)
-//        msg should be ("testMessage")
       }
     } catch {
       case e:RuntimeException => {

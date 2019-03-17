@@ -7,6 +7,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Timer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
@@ -17,6 +19,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class KafkaConsumer<V> {
 
+    private static final Logger logger = LoggerFactory.getLogger(KafkaProducer.class);
+
     private final String topic;
     private final Map<String, Object> props;
     private org.apache.kafka.clients.consumer.KafkaConsumer<String, String> consumer;
@@ -26,8 +30,8 @@ public class KafkaConsumer<V> {
         this.topic = topic;
         this.props = new HashMap(props);
         this.props.put("bootstrap.servers", brokerList);
-//        this.props.put("key.serializer", StringDeserializer.class);
-//        this.props.put("value.serializer", StringDeserializer.class);
+        this.props.put("auto.offset.reset", "earliest");
+        this.props.put("enable.auto.commit", "false");
         this.props.put("group.id", groupId);
         this.consumer = new org.apache.kafka.clients.consumer.KafkaConsumer(this.props, new StringDeserializer(), new StringDeserializer());
     }
@@ -47,7 +51,7 @@ public class KafkaConsumer<V> {
     public Iterable<V> getMessages(int n, long timeout) {
         try {
             consumer.subscribe(Collections.singleton(topic));
-            consumer.partitionsFor(topic);
+            consumer.partitionsFor(topic).stream().forEach(i -> logger.info("partionInfo: "+i));
 
             List tmp = new ArrayList(n);
 
