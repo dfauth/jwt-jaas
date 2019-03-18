@@ -1,8 +1,8 @@
 package com.github.dfauth.jwt_jaas.kafka
 
 import java.lang
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
-import java.util.{UUID, function}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.RecordMetadata
@@ -47,8 +47,6 @@ case class KafkaConsumerWrapper[V](topic: String,
   }
 
   def getOneMessage(timeout:Int = 5000):Option[V] = getMessages(1, timeout).find(_ => true)
-
-  val f1: function.Function[V, CompletableFuture[lang.Boolean]] = (t: V) => new CompletableFuture[lang.Boolean]()
 
   def subscribe(f: V => Future[Boolean]): Unit = {
 

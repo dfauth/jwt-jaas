@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
@@ -26,6 +27,7 @@ public class KafkaConsumer<V> {
 
     private final String topic;
     private final Map<String, Object> props;
+    private final Deserializer<V> deserializer;
     private org.apache.kafka.clients.consumer.KafkaConsumer<String, V> consumer;
     private static final SystemTime systemTime = new SystemTime();
 
@@ -36,7 +38,7 @@ public class KafkaConsumer<V> {
         this.props.put("auto.offset.reset", "earliest");
         this.props.put("enable.auto.commit", "false");
         this.props.put("group.id", groupId);
-        this.consumer = new org.apache.kafka.clients.consumer.KafkaConsumer(this.props, new StringDeserializer(), d);
+        this.deserializer = d;
     }
 
     public KafkaConsumer<V> stop() {
@@ -49,26 +51,33 @@ public class KafkaConsumer<V> {
     }
 
     public void subscribe(Function<V, CompletableFuture<Boolean>> f, long timeout) {
-        try {
-            consumer.subscribe(Collections.singleton(topic));
-            consumer.partitionsFor(topic).stream().forEach(i -> logger.info("partionInfo: "+i));
+        Executors.newSingleThreadExecutor().submit(() -> {
+            try {
+                this.consumer = new org.apache.kafka.clients.consumer.KafkaConsumer(this.props, new StringDeserializer(), deserializer);
+                consumer.subscribe(Collections.singleton(topic));
+                consumer.partitionsFor(topic).stream().forEach(i -> logger.info("partionInfo: "+i));
 
-            while(true) {
-                ConsumerRecords<String, V> records = consumer.poll(Duration.ofMillis(timeout));
-                Iterator<ConsumerRecord<String, V>> it = records.iterator();
-                while(it.hasNext()) {
-                    ConsumerRecord<String, V> record = it.next();
-                    CompletableFuture<Boolean> future = f.apply(record.value());
-                    future.thenAccept(b -> {if(b) {
-                        TopicPartition tp = new TopicPartition(record.topic(), record.partition());
-                        OffsetAndMetadata om = new OffsetAndMetadata(record.offset() + 1);
-                        consumer.commitSync(Collections.singletonMap(tp, om));
-                    }});
+                while(true) {
+                    try {
+                        ConsumerRecords<String, V> records = consumer.poll(Duration.ofMillis(timeout));
+                        Iterator<ConsumerRecord<String, V>> it = records.iterator();
+                        while(it.hasNext()) {
+                            ConsumerRecord<String, V> record = it.next();
+                            CompletableFuture<Boolean> future = f.apply(record.value());
+                            future.thenAccept(b -> {if(b) {
+                                TopicPartition tp = new TopicPartition(record.topic(), record.partition());
+                                OffsetAndMetadata om = new OffsetAndMetadata(record.offset() + 1);
+                                consumer.commitSync(Collections.singletonMap(tp, om));
+                            }});
+                        }
+                    } catch (RuntimeException e) {
+                        logger.info(e.getMessage(), e);
+                    }
                 }
+            } finally {
+                consumer.unsubscribe();
             }
-        } finally {
-            consumer.unsubscribe();
-        }
+        });
     }
 
     public Optional<V> getOneMessage() {
@@ -83,6 +92,7 @@ public class KafkaConsumer<V> {
         return getMessages(n, SECONDS.toMillis(5));
     }
     public Iterable<V> getMessages(int n, long timeout) {
+        this.consumer = new org.apache.kafka.clients.consumer.KafkaConsumer(this.props, new StringDeserializer(), deserializer);
         try {
             consumer.subscribe(Collections.singleton(topic));
             consumer.partitionsFor(topic).stream().forEach(i -> logger.info("partionInfo: "+i));
