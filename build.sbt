@@ -21,6 +21,7 @@ val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.1" % Te
 val kafkaCore = "org.apache.kafka" %% "kafka" % kafkaVersion
 val embeddedKafkaStreams = "net.manub" %% "scalatest-embedded-kafka-streams" % "2.0.0" % Test
 // val kafkaTest = "org.apache.kafka" %% "test" % "latest.release" % "test" //"1.2.2.RELEASE"
+val scalaJava8 = "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.0"
 
 val commonScalaDeps = Seq(scalactic, scalatest, akkaHttpSprayJson, scalaLogging)
 
@@ -74,6 +75,7 @@ lazy val kafka = (project in file("kafka"))
   .settings(
     libraryDependencies ++= commonScalaDeps,
     libraryDependencies ++= Seq(
+      scalaJava8,
       kafkaClient,
       embeddedKafka,
       embeddedKafkaStreams,

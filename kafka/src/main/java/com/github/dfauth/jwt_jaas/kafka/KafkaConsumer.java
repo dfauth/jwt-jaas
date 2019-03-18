@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.StreamSupport;
@@ -46,11 +47,11 @@ public class KafkaConsumer<V> {
         return this;
     }
 
-    public void subscribe(Function<V, CompletableFuture<Boolean>> f) {
+    public void subscribe(Function<V, CompletionStage<Boolean>> f) {
         subscribe(f, 5000);
     }
 
-    public void subscribe(Function<V, CompletableFuture<Boolean>> f, long timeout) {
+    public void subscribe(Function<V, CompletionStage<Boolean>> f, long timeout) {
         Executors.newSingleThreadExecutor().submit(() -> {
             try {
                 this.consumer = new org.apache.kafka.clients.consumer.KafkaConsumer(this.props, new StringDeserializer(), deserializer);
@@ -63,7 +64,7 @@ public class KafkaConsumer<V> {
                         Iterator<ConsumerRecord<String, V>> it = records.iterator();
                         while(it.hasNext()) {
                             ConsumerRecord<String, V> record = it.next();
-                            CompletableFuture<Boolean> future = f.apply(record.value());
+                            CompletionStage<Boolean> future = f.apply(record.value());
                             future.thenAccept(b -> {if(b) {
                                 TopicPartition tp = new TopicPartition(record.topic(), record.partition());
                                 OffsetAndMetadata om = new OffsetAndMetadata(record.offset() + 1);

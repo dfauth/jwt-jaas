@@ -58,22 +58,6 @@ case class KafkaConsumerWrapper[V](topic: String,
       }
       tmp
     })
-
-//    consumer.subscribe(f1)
-
-//    consumer.subscribe(new function.Function[V,CompletableFuture[lang.Boolean]] {
-//
-//      override def apply(t: V): CompletableFuture[Boolean] = {
-//        val tmp = new CompletableFuture[Boolean]()
-//        f(t).onComplete {
-//          case Success(b) => tmp.complete(b)
-//          case Failure(t) => tmp.completeExceptionally(t)
-//        }
-//        tmp
-//      }
-//    })
   }
-
-
 }
 
