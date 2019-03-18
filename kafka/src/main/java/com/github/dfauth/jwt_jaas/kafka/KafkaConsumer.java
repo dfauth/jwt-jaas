@@ -31,6 +31,8 @@ public class KafkaConsumer<V> {
     private final Deserializer<V> deserializer;
     private org.apache.kafka.clients.consumer.KafkaConsumer<String, V> consumer;
     private static final SystemTime systemTime = new SystemTime();
+    private boolean isRunning = true;
+    private Thread pollingThread;
 
     public KafkaConsumer(String topic, String groupId, String zookeeperConnect, String brokerList, Map<String, Object> props, Deserializer<V> d) {
         this.topic = topic;
@@ -43,7 +45,10 @@ public class KafkaConsumer<V> {
     }
 
     public KafkaConsumer<V> stop() {
-        this.consumer.close();
+        this.isRunning = false;
+        if(pollingThread != null) {
+            pollingThread.interrupt();
+        }
         return this;
     }
 
@@ -54,11 +59,12 @@ public class KafkaConsumer<V> {
     public void subscribe(Function<V, CompletionStage<Boolean>> f, long timeout) {
         Executors.newSingleThreadExecutor().submit(() -> {
             try {
+                pollingThread = Thread.currentThread();
                 this.consumer = new org.apache.kafka.clients.consumer.KafkaConsumer(this.props, new StringDeserializer(), deserializer);
                 consumer.subscribe(Collections.singleton(topic));
                 consumer.partitionsFor(topic).stream().forEach(i -> logger.info("partionInfo: "+i));
 
-                while(true) {
+                while(isRunning) {
                     try {
                         ConsumerRecords<String, V> records = consumer.poll(Duration.ofMillis(timeout));
                         Iterator<ConsumerRecord<String, V>> it = records.iterator();

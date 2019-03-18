@@ -59,5 +59,7 @@ case class KafkaConsumerWrapper[V](topic: String,
       tmp
     })
   }
+
+  def stop = consumer.stop()
 }
 
