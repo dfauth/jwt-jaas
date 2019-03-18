@@ -1,6 +1,6 @@
 package com.github.dfauth.jwt_jaas.kafka
 
-import java.util.concurrent.{ArrayBlockingQueue, CompletableFuture}
+import java.util.concurrent.ArrayBlockingQueue
 
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
@@ -8,7 +8,7 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.Promise
 
 class KafkaConsumerProducerSpec
   extends FlatSpec
@@ -46,7 +46,7 @@ class KafkaConsumerProducerSpec
     }
   }
 
-  val queue = new ArrayBlockingQueue[Tuple2[String, CompletableFuture[Boolean]]](2)
+  val queue = new ArrayBlockingQueue[Tuple2[String, Promise[Boolean]]](2)
 
   "kafka consumer" should "be able to take a function returning a future indicating if it was successfully processed" in {
 
@@ -72,17 +72,14 @@ class KafkaConsumerProducerSpec
         producer.send("testMessage").onComplete(logSuccess)
 
         consumer.subscribe(v => {
-          val t = new CompletableFuture[Boolean]()
-          val f = Future {
-            t.get()
-          }
-          queue.offer((v, t))
-          f
+          val p = Promise[Boolean]()
+          queue.offer((v, p))
+          p.future
         })
       val (v, t) = queue.take()
       logger.info(s"${v}")
       v should be ("testMessage")
-      t.complete(true)
+      t.success(true)
       }
     } catch {
       case e:RuntimeException => {
