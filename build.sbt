@@ -5,7 +5,6 @@ version := "0.1"
 scalaVersion := "2.12.6"
 val kafkaVersion = "2.1.1"
 
-
 //scala deps
 val scalactic = "org.scalactic" %% "scalactic" % "3.0.5"
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5" % "test"
@@ -26,7 +25,7 @@ val scalaJava8 = "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.0"
 val commonScalaDeps = Seq(scalactic, scalatest, akkaHttpSprayJson, scalaLogging)
 
 // java deps
-val testng = "org.testng" % "testng" % "latest.release" % "test"
+val testng = "org.testng" % "testng" % "6.14.3" % "test"
 val slf4j = "org.slf4j" % "slf4j-api" % "latest.release"
 val logback = "ch.qos.logback" % "logback-classic" % "latest.release"
 val restAssurred = "io.rest-assured" % "rest-assured" % "latest.release"
@@ -49,7 +48,9 @@ val kafkaClient = "org.apache.kafka" % "kafka-clients" % kafkaVersion withSource
 val commonJavaDeps = Seq(slf4j, logback, testng)
 
 lazy val jwt = (project in file("jwt"))
+  .enablePlugins(TestNGPlugin)
   .settings(
+    testNGVersion := "6.14.3",
     libraryDependencies ++= commonJavaDeps,
     libraryDependencies ++= Seq(
       jjwt_api,
