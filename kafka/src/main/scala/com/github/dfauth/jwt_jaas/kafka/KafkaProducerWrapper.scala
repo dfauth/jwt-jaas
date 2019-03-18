@@ -1,13 +1,17 @@
 package com.github.dfauth.jwt_jaas.kafka
 
-import java.util.UUID
+import java.lang
+import java.util.concurrent.CompletableFuture
+import java.util.{UUID, function}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.RecordMetadata
+import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConverters._
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 
 case class KafkaProducerWrapper[V](topic: String,
@@ -29,16 +33,49 @@ case class KafkaProducerWrapper[V](topic: String,
 }
 
 case class KafkaConsumerWrapper[V](topic: String,
+                                   deserializer:Deserializer[V],
                                    groupId: String = UUID.randomUUID().toString,
                                    zookeeperConnect: String = "localhost:6000",
                                    brokerList:String = "localhost:6001",
-                                   props:Map[String,Object] = Map.empty) extends LazyLogging {
-  val consumer = new KafkaConsumer[V](topic, groupId, zookeeperConnect, brokerList, props.asJava)
+                                   props:Map[String,Object] = Map.empty
+                                   ) extends LazyLogging {
+
+  val consumer:KafkaConsumer[V] = new KafkaConsumer[V](topic, groupId, zookeeperConnect, brokerList, props.asJava, deserializer)
 
   def getMessages(n: Int, timeout:Int = 5000): Seq[V] = {
     consumer.getMessages(n, timeout).asScala.toSeq
   }
 
   def getOneMessage(timeout:Int = 5000):Option[V] = getMessages(1, timeout).find(_ => true)
+
+  val f1: function.Function[V, CompletableFuture[lang.Boolean]] = (t: V) => new CompletableFuture[lang.Boolean]()
+
+  def subscribe(f: V => Future[Boolean]): Unit = {
+
+    consumer.subscribe((t: V) => {
+      val tmp = new CompletableFuture[lang.Boolean]()
+      f(t).onComplete {
+        case Success(b) => tmp.complete(b)
+        case Failure(t) => tmp.completeExceptionally(t)
+      }
+      tmp
+    })
+
+//    consumer.subscribe(f1)
+
+//    consumer.subscribe(new function.Function[V,CompletableFuture[lang.Boolean]] {
+//
+//      override def apply(t: V): CompletableFuture[Boolean] = {
+//        val tmp = new CompletableFuture[Boolean]()
+//        f(t).onComplete {
+//          case Success(b) => tmp.complete(b)
+//          case Failure(t) => tmp.completeExceptionally(t)
+//        }
+//        tmp
+//      }
+//    })
+  }
+
+
 }
 
