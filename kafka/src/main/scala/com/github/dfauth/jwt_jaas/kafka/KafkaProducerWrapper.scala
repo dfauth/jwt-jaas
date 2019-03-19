@@ -6,7 +6,7 @@ import java.util.concurrent.CompletableFuture
 
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.RecordMetadata
-import org.apache.kafka.common.serialization.Deserializer
+import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -15,11 +15,12 @@ import scala.util.{Failure, Success}
 
 
 case class KafkaProducerWrapper[V](topic: String,
+                                   serializer:Serializer[V],
                                    groupId: String = UUID.randomUUID().toString,
                                    zookeeperConnect: String = "localhost:6000",
                                    brokerList:String = "localhost:6001",
                                    props:Map[String,Object] = Map.empty) extends LazyLogging {
-  val producer = new KafkaProducer[V](topic, groupId, zookeeperConnect, brokerList, props.asJava)
+  val producer = new KafkaProducer[V](topic, groupId, zookeeperConnect, brokerList, props.asJava, serializer)
 
   def send(messages: Seq[V]):Seq[Future[RecordMetadata]] = {
     producer.send(messages.asJava).asScala.toSeq.map(f => Future {

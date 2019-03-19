@@ -2,6 +2,7 @@ package com.github.dfauth.jwt_jaas.kafka;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,14 +22,14 @@ public class KafkaProducer<V> {
     private final Map<String, Object> props;
     private org.apache.kafka.clients.producer.KafkaProducer<String, V> producer;
 
-    public KafkaProducer(String topic, String groupId, String zookeeperConnectString, String brokerList, Map<String, Object> props) {
+    public KafkaProducer(String topic, String groupId, String zookeeperConnectString, String brokerList, Map<String, Object> props, Serializer<V> serializer) {
         this.topic = topic;
         this.props = new HashMap(props);
         this.props.put("bootstrap.servers", brokerList);
 //        this.props.put("key.serializer", StringSerializer.class);
 //        this.props.put("value.serializer", StringSerializer.class);
         this.props.put("client.id", groupId);
-        this.producer = new org.apache.kafka.clients.producer.KafkaProducer(this.props, new StringSerializer(), new StringSerializer());
+        this.producer = new org.apache.kafka.clients.producer.KafkaProducer(this.props, new StringSerializer(), serializer);
     }
 
     public KafkaProducer stop() {
@@ -64,7 +65,9 @@ public class KafkaProducer<V> {
                 ).collect(Collectors.toSet());
     }
 
-    public static class NestedBuilder extends AbstractKafkaBuilder<KafkaProducer> {
+    public static class NestedBuilder<V> extends AbstractKafkaBuilder<KafkaProducer<V>> {
+
+        private Serializer serializer = new StringSerializer();
 
         public static NestedBuilder of(String topic) {
             return new NestedBuilder(topic);
@@ -74,9 +77,14 @@ public class KafkaProducer<V> {
             super(topic);
         }
 
+        public NestedBuilder withSerializer(Serializer<V> serializer) {
+            this.serializer = serializer;
+            return this;
+        }
+
         @Override
         public KafkaProducer build() {
-            return new KafkaProducer(topic, groupId, zookeeperConnect, brokerList, props);
+            return new KafkaProducer(topic, groupId, zookeeperConnect, brokerList, props, serializer);
         }
     }
 }

@@ -14,7 +14,7 @@ val akkaStream = "com.typesafe.akka" %% "akka-stream" % "latest.release"
 val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "latest.release"
 val playJson = "com.typesafe.play" %% "play-json" % "latest.release"
 val akkaHttpSprayJson = "com.typesafe.akka" %% "akka-http-spray-json" % "latest.release"
-val jwtAkkaHttp = "com.emarsys" %% "jwt-akka-http" % "latest.release"
+//val jwtAkkaHttp = "com.emarsys" %% "jwt-akka-http" % "latest.release"
 val restAssurredScalaSupport = "io.rest-assured" %% "scala-support" % "latest.release"
 val embeddedKafka = "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.1" % Test withSources()
 val kafkaCore = "org.apache.kafka" %% "kafka" % kafkaVersion
@@ -76,6 +76,8 @@ lazy val kafka = (project in file("kafka"))
   .settings(
     libraryDependencies ++= commonScalaDeps,
     libraryDependencies ++= Seq(
+      akkaHttp,
+      akkaStream,
       scalaJava8,
       kafkaClient,
       embeddedKafka,

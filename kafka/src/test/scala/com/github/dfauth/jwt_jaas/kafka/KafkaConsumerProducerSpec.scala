@@ -4,7 +4,7 @@ import java.util.concurrent.ArrayBlockingQueue
 
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
-import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -25,7 +25,7 @@ class KafkaConsumerProducerSpec
       withRunningKafkaOnFoundPort(EmbeddedKafkaConfig(kafkaPort = 9092, zooKeeperPort = 2181)) { implicit config =>
         val zookeeperConnectString = "localhost:" + config.zooKeeperPort
         val brokerList = "localhost:" + config.kafkaPort
-        val producer = KafkaProducerWrapper[String](TOPIC, brokerList = brokerList, zookeeperConnect = zookeeperConnectString, props = config.customProducerProperties)
+        val producer = KafkaProducerWrapper[String](TOPIC, new StringSerializer, brokerList, zookeeperConnect = zookeeperConnectString, props = config.customProducerProperties)
 
         val consumer = new KafkaConsumerWrapper[String](TOPIC,
           new StringDeserializer,
@@ -57,6 +57,7 @@ class KafkaConsumerProducerSpec
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
 
         val producer = KafkaProducerWrapper[String](TOPIC,
+          new StringSerializer,
           brokerList = brokerList,
           zookeeperConnect = zookeeperConnectString,
           props = config.customProducerProperties
@@ -101,6 +102,7 @@ class KafkaConsumerProducerSpec
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
 
         val producer = KafkaProducerWrapper[String](TOPIC,
+          new StringSerializer,
           brokerList = brokerList,
           zookeeperConnect = zookeeperConnectString,
           props = config.customProducerProperties
