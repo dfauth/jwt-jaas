@@ -20,7 +20,7 @@ public class JWTVerifier {
 
 
     public Function<Claims, User> asUser = claims -> {
-        Set<RoleBuilder> roles = ((List<Map<String, Object>>) claims.get("roles", List.class)).stream().map(RBM).collect(Collectors.toSet());
+        Set<RoleBuilder> roles = ((List<Map<String, Object>>) Optional.ofNullable(claims.get("roles", List.class)).orElse(Collections.emptyList())).stream().map(RBM).collect(Collectors.toSet());
         String userId = claims.getSubject();
         Date expiry = claims.getExpiration();
         return new UserBuilder().withUserId(userId).withExpiry(expiry.toInstant()).withRoles(roles).build();
@@ -70,6 +70,10 @@ public class JWTVerifier {
 
             public Failure(RuntimeException e) {
                 this.e = e;
+            }
+
+            public RuntimeException getCause() {
+                return this.e;
             }
 
             public static <T> TokenAuthentication<T> with(RuntimeException e) {

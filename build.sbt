@@ -85,7 +85,7 @@ lazy val kafka = (project in file("kafka"))
       javax_ws_rs,
       logback
     )
-  ).dependsOn(common)
+  ).dependsOn(common, jwt)
 
 lazy val common = (project in file("common"))
   .settings(

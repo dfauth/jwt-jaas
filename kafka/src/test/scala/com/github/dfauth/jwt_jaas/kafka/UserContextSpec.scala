@@ -4,6 +4,8 @@ import java.util
 import java.util.concurrent.ArrayBlockingQueue
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import com.github.dfauth.jwt_jaas.jwt.JWTVerifier.TokenAuthentication.{Failure, Success}
+import com.github.dfauth.jwt_jaas.jwt.{JWTVerifier, User}
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.common.serialization.Deserializer
@@ -163,9 +165,27 @@ class UserContextSpec
   }
 }
 
-object Utils {
+object Utils extends LazyLogging {
   def wrap[A,B](f: A => B) = {
     Wrapper(f)
+  }
+  def compose[T](jwtVerifier:JWTVerifier)(f:User => Payload[T] => Unit):UserContext[Payload[T]] => Future[Boolean] = {
+    userCtx => {
+      jwtVerifier.authenticateToken(userCtx.token, jwtVerifier.asUser) match {
+        case s:Success[User] => {
+          f(s.getPayload)(userCtx.payload)
+          Future {
+            true
+          }
+        }
+        case f:Failure[User] => {
+          logger.info(s" token verification failed; ${f.getCause()}")
+          Future {
+            false
+          }
+        }
+      }
+    }
   }
 }
 
