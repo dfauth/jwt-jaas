@@ -1,16 +1,16 @@
 package com.github.dfauth.jwt_jaas
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.Future
 
 object ContextualPipeline {
 
-  def wrap[CTX,A,B](f:A => B):ContextualPipeline[CTX,A,B] = userWrap((user:CTX) => f)
+  def wrap[CTX,A,B](f:A => B):ContextualPipeline[CTX,A,B] = ctxWrap((user:CTX) => f)
 
-  def userWrap[CTX,A,B](f:CTX => A => B):ContextualPipeline[CTX,A,B] = ContextualPipeline[CTX,A,B](f)
+  def ctxWrap[CTX,A,B](f:CTX => A => B):ContextualPipeline[CTX,A,B] = ContextualPipeline[CTX,A,B](f)
 
   def adaptFutureWithContext[CTX,A,B](f: CTX => A => B): CTX => Future[A] => Future[B] = {
-    user => fa => fa.map(f(user)(_))
+    ctx => fa => fa.map(f(ctx)(_))
   }
 
   def adaptFuture[A,B](f: A => B): Future[A] => Future[B] = {
@@ -21,7 +21,7 @@ object ContextualPipeline {
 
 case class ContextualPipeline[CTX,A,B](f:CTX => A => B)  {
 
-  def map[C](g: B => C):ContextualPipeline[CTX,A,C] = mapWithContext((user:CTX) => g)
+  def map[C](g: B => C):ContextualPipeline[CTX,A,C] = mapWithContext((ctx:CTX) => g)
 
   def mapWithContext[C](g: CTX => B => C):ContextualPipeline[CTX,A,C] = {
     ContextualPipeline[CTX,A,C]((u:CTX) => f(u).andThen(g(u)))

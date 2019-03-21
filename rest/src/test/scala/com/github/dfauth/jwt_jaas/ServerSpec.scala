@@ -20,7 +20,7 @@ import scala.concurrent.duration._
 class ServerSpec extends FlatSpec with Matchers with LazyLogging {
 
   val host = "localhost"
-  val port = 9000
+  val port = 0
 
 
   "a hello endpoint" should "say hello" in {
@@ -35,11 +35,11 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(route, host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5000.seconds)
+    val binding = Await.result(bindingFuture, 5000.seconds)
 
     try {
       when().
-        get(endPoint.endPointUrl("hello")).
+        get(endPoint.endPointUrl(binding, "hello")).
         then().
         statusCode(200).
         body("say",equalTo("hello"));
@@ -62,13 +62,13 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(route, host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5000.seconds)
+    val binding = Await.result(bindingFuture, 5000.seconds)
 
     try {
       val name = "fred"
       given().contentType(ContentType.JSON).
         body(Payload(name).toJson.prettyPrint).log().body(true).
-        post(endPoint.endPointUrl("hello")).
+        post(endPoint.endPointUrl(binding, "hello")).
         then().log().body(true).
         statusCode(200).
         body("say",equalTo(s"hello to ${name}"));
@@ -94,13 +94,13 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(route, host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5000.seconds)
+    val binding = Await.result(bindingFuture, 5000.seconds)
 
     try {
       val name = "fred"
       given().contentType(ContentType.JSON).
         body(Payload(name).toJson.prettyPrint).log().body(true).
-        post(endPoint.endPointUrl("hello")).
+        post(endPoint.endPointUrl(binding, "hello")).
         then().log().body(true).
         statusCode(200).
         body("result",equalTo(s"say hello to ${name} from a component"));
@@ -121,7 +121,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(hello(jwtVerifier), host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5.seconds)
+    val binding = Await.result(bindingFuture, 5.seconds)
 
     try {
       val userId: String = "fred"
@@ -131,7 +131,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
       given().header("Authorization", "Bearer "+token).
         when().log().headers().
-        get(endPoint.endPointUrl("hello")).
+        get(endPoint.endPointUrl(binding, "hello")).
         then().
         statusCode(200).
         body("say",equalTo(s"hello to authenticated ${userId}"))
@@ -152,7 +152,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(hello(jwtVerifier), host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5.seconds)
+    val binding = Await.result(bindingFuture, 5.seconds)
 
     try {
       val userId: String = "fred"
@@ -167,7 +167,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       })
       given().header("Authorization", "Bearer "+token1).
         when().log().headers().
-        get(endPoint.endPointUrl("hello")).
+        get(endPoint.endPointUrl(binding, "hello")).
         then().
         statusCode(401)
     } finally {
@@ -185,7 +185,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(login(component.handle), host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5.seconds)
+    val binding = Await.result(bindingFuture, 5.seconds)
 
     try {
       val userId: String = "fred"
@@ -194,7 +194,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       val response = given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl("login"))
+        post(endPoint.endPointUrl(binding, "login"))
         response.then().statusCode(200)
       val authorizationToken = response.body.path[String]("authorizationToken")
       logger.info(s"authorizationToken: ${authorizationToken}")
@@ -218,7 +218,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(login(component.handle), host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5.seconds)
+    val binding = Await.result(bindingFuture, 5.seconds)
 
     try {
       val userId: String = "fred"
@@ -227,7 +227,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl("login")).
+        post(endPoint.endPointUrl(binding, "login")).
         then().
         statusCode(401)
     } finally {
@@ -245,7 +245,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(login(component.handle), host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5.seconds)
+    val binding = Await.result(bindingFuture, 5.seconds)
 
     try {
       val userId: String = "wilma"
@@ -254,7 +254,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl("login")).
+        post(endPoint.endPointUrl(binding, "login")).
         then().
         statusCode(401)
     } finally {
@@ -272,7 +272,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(login(component.handle), host, port)
     val bindingFuture = endPoint.start()
 
-    Await.result(bindingFuture, 5.seconds)
+    val binding = Await.result(bindingFuture, 5.seconds)
 
     try {
       val userId: String = "wilma"
@@ -281,7 +281,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl("login")).
+        post(endPoint.endPointUrl(binding, "login")).
         then().
         statusCode(401)
     } finally {

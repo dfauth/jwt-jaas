@@ -100,12 +100,12 @@ class UserContextSpec
 
         val wrapper = Utils.wrap[UserContext[Payload[String]],UserContext[Result[Int]]]((uc:UserContext[Payload[String]]) => UserContext(uc.token,Result(uc.payload.payload.toInt)))
         consumer.subscribe(wrapper.function)
-        val payload = UserContext("blahToken",Payload("testMessage"))
-        producer.send(payload).onComplete(logSuccess)
+        val usrCtx = UserContext("blahToken",Payload("testMessage"))
+        producer.send(usrCtx).onComplete(logSuccess)
 
         val v1 = wrapper.take()
         logger.info(s"WOOZ received : ${v1}")
-        v1 should be (payload)
+        v1 should be (usrCtx)
         wrapper.success(true)
       }
     } catch {

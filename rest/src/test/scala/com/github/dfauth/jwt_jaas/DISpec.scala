@@ -25,11 +25,10 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
 
     val routes:Route = login(handle) ~ genericGet0Endpoint(component.handleWithUser)
 
-    val endPoint = RestEndPointServer(routes)
-    implicit val loginEndpoint:String = endPoint.endPointUrl("login")
+    val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
-
-    Await.result(bindingFuture, 5.seconds)
+    val binding = Await.result(bindingFuture, 5.seconds)
+    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
 
     try {
       val userId:String = "fred"
@@ -37,7 +36,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
       val tokens:Tokens = asUser(userId).withPassword(password).login
       tokens.
         when().log().headers().
-        get(endPoint.endPointUrl("endpoint")).
+        get(endPoint.endPointUrl(binding, "endpoint")).
         then().
         statusCode(200).
         body("result",equalTo(s"${userId}"))
@@ -56,11 +55,10 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
 
     val routes:Route = login(handle) ~ genericPostEndpoint(component.handleWithUser)
 
-    val endPoint = RestEndPointServer(routes)
-    implicit val loginEndpoint:String = endPoint.endPointUrl("login")
+    val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
-
-    Await.result(bindingFuture, 5.seconds)
+    val binding = Await.result(bindingFuture, 5.seconds)
+    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
 
     try {
       val userId:String = "fred"
@@ -73,7 +71,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
       val response:Response = tokens.when.log().all().
         contentType(ContentType.JSON).
         body(bodyContent).
-        post(endPoint.endPointUrl("endpoint"))
+        post(endPoint.endPointUrl(binding, "endpoint"))
 
       response.then().statusCode(200).
         body("result",equalTo(s"${payload} customised for ${userId}"))
