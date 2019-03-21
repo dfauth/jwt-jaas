@@ -70,7 +70,7 @@ lazy val rest = (project in file("rest"))
       restAssurred,
       hamcrest
     )
-  ).dependsOn(jwt)
+  ).dependsOn(jwt, common)
 
 lazy val kafka = (project in file("kafka"))
   .settings(
@@ -85,10 +85,18 @@ lazy val kafka = (project in file("kafka"))
       javax_ws_rs,
       logback
     )
+  ).dependsOn(common)
+
+lazy val common = (project in file("common"))
+  .settings(
+    libraryDependencies ++= commonScalaDeps,
+    libraryDependencies ++= Seq(
+      logback
+    )
   )
 
 lazy val root = (project in file("."))
-  .aggregate(rest, jwt, kafka)
+  .aggregate(rest, jwt, kafka, common)
 
 
 
