@@ -6,7 +6,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
-import org.apache.kafka.common.serialization.{Deserializer, Serializer}
+import org.apache.kafka.common.serialization.Deserializer
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json._
 
@@ -20,6 +20,7 @@ class UserContextSpec
     with LazyLogging {
 
   val TOPIC = "testTopic"
+  val TOKEN = "blahToken"
 
 
   "jsonsupport" should "support round trip" in {
@@ -100,12 +101,15 @@ class UserContextSpec
 
         val wrapper = Utils.wrap[UserContext[Payload[String]],UserContext[Result[Int]]]((uc:UserContext[Payload[String]]) => UserContext(uc.token,Result(uc.payload.payload.toInt)))
         consumer.subscribe(wrapper.function)
-        val usrCtx = UserContext("blahToken",Payload("testMessage"))
+        val usrCtx = UserContext(TOKEN,Payload("testMessage"))
         producer.send(usrCtx).onComplete(logSuccess)
 
-        val v1 = wrapper.take()
-        logger.info(s"WOOZ received : ${v1}")
-        v1 should be (usrCtx)
+        val v = wrapper.take()
+        logger.info(s"WOOZ received : ${v}")
+        v should be (usrCtx)
+        v.token should be (TOKEN)
+        v.payload should be (Payload("testMessage"))
+        v.payload.payload should be ("testMessage")
         wrapper.success(true)
       }
     } catch {
@@ -212,13 +216,3 @@ case class UserContextSerializer[T](f:UserContext[T] => JsValue) extends JsValue
 
 case class PayloadSerializer[T](f:Payload[T] => JsValue) extends JsValueSerializer[Payload[T]](f)
 
-abstract class JsValueSerializer[T](f:T => JsValue) extends Serializer[T] {
-
-  override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
-
-  override def close(): Unit = {}
-
-  override def serialize(topic: String, data: T): Array[Byte] = {
-    f(data).prettyPrint.getBytes
-  }
-}
