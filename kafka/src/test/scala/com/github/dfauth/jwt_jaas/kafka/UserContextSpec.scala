@@ -85,14 +85,14 @@ class UserContextSpec
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
 
         val producer = KafkaProducerWrapper[UserContext[Payload[String]]](TOPIC,
-          UserContextSerializer(new PayloadSerializer[String](d => d.toJson)),
+          UserContextSerializer(d => d.toJson),
           brokerList = brokerList,
           zookeeperConnect = zookeeperConnectString,
           props = config.customProducerProperties
         )
 
         val consumer = new KafkaConsumerWrapper[UserContext[Payload[String]]](TOPIC,
-          new UserContextDeserializer(new PayloadDeserializer[String](o => o.convertTo[Payload[String]])),
+          new UserContextDeserializer(d => d.convertTo[UserContext[Payload[String]]]),
           brokerList = brokerList,
           zookeeperConnect = zookeeperConnectString,
           props = config.customConsumerProperties
@@ -149,6 +149,13 @@ class UserContextSpec
       val result = new PayloadDeserializer[String](o => o.convertTo[Payload[String]]).deserialize(TOPIC,serialized)
       result should be (ref)
     }
+
+    {
+      val ref = new UserContext[Payload[String]]("tokenString", new Payload[String]("hello"))
+      val serialized = new UserContextSerializer[Payload[String]](d => d.toJson).serialize(TOPIC, ref)
+      val result = new UserContextDeserializer[Payload[String]](d => d.convertTo[UserContext[Payload[String]]]).deserialize(TOPIC,serialized)
+      result should be (ref)
+    }
   }
 }
 
@@ -186,41 +193,32 @@ object JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit def resultFormat[T:JsonFormat]:RootJsonFormat[Result[T]] = jsonFormat1(Result.apply[T])
 }
 
-class PayloadDeserializer[T](f:JsValue => Payload[T]) extends Deserializer[Payload[T]] {
+class PayloadDeserializer[T](f:JsValue => Payload[T]) extends JsValueDeserializer[Payload[T]](f)
+
+case class UserContextDeserializer[T](f:JsValue => UserContext[T]) extends JsValueDeserializer[UserContext[T]](f)
+
+abstract class JsValueDeserializer[T](f:JsValue => T) extends Deserializer[T] {
   override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
 
   override def close(): Unit = {}
 
-  override def deserialize(topic: String, data: Array[Byte]): Payload[T] = {
+  override def deserialize(topic: String, data: Array[Byte]): T = {
     val jsObj: JsValue = JsonParser(data).asJsObject
     f(jsObj)
   }
 }
 
-case class UserContextSerializer[T](nested:Serializer[T]) extends Serializer[UserContext[T]] {
-  override def serialize(topic: String, data: UserContext[T]): Array[Byte] = ???
-//    val result:Array[Byte] = nested.serialize(topic, data.payload)
-//    JsonSupport.usCtxFormat.write(re).prettyPrint.getBytes
-  override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
+case class UserContextSerializer[T](f:UserContext[T] => JsValue) extends JsValueSerializer[UserContext[T]](f)
 
-  override def close(): Unit = {}
-}
+case class PayloadSerializer[T](f:Payload[T] => JsValue) extends JsValueSerializer[Payload[T]](f)
 
-case class UserContextDeserializer[T](nested:Deserializer[T]) extends Deserializer[UserContext[T]] {
-  override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
-
-  override def close(): Unit = {}
-
-  override def deserialize(topic: String, data: Array[Byte]): UserContext[T] = ???
-}
-
-class PayloadSerializer[T](f:Payload[T] => JsValue) extends Serializer[Payload[T]] {
+abstract class JsValueSerializer[T](f:T => JsValue) extends Serializer[T] {
 
   override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
 
   override def close(): Unit = {}
 
-  override def serialize(topic: String, data: Payload[T]): Array[Byte] = {
+  override def serialize(topic: String, data: T): Array[Byte] = {
     f(data).prettyPrint.getBytes
   }
 }
