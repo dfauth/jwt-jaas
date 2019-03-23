@@ -1,10 +1,10 @@
-package com.github.dfauth.jwt_jaas
+package com.github.dfauth.jwt_jaas.rest
 
 import akka.http.scaladsl.model.headers.HttpChallenge
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, Rejection}
 import com.github.dfauth.jwt_jaas.jwt.JWTVerifier.TokenAuthentication.{Failure, Success}
-import com.github.dfauth.jwt_jaas.jwt.{JWTVerifier, User}
+import com.github.dfauth.jwt_jaas.jwt.{JWTVerifier, User, UserCtx}
 import com.typesafe.scalalogging.LazyLogging
 
 object MyDirectives extends LazyLogging {
@@ -20,12 +20,12 @@ object MyDirectives extends LazyLogging {
 
   def authRejection: Rejection = AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, HttpChallenge("", ""))
 
-  def authenticate(verifier:JWTVerifier): Directive1[User] = {
+  def authenticate(verifier:JWTVerifier): Directive1[UserCtx] = {
     var user:User = null
     bearerToken.flatMap {
       case Some(token) => {
         verifier.authenticateToken(token, verifier.asUser) match {
-          case s:Success[User] => provide(s.getPayload)
+          case s:Success[User] => provide(new UserCtx(token, s.getPayload))
           case f:Failure[User] => reject(authRejection)
         }
       }

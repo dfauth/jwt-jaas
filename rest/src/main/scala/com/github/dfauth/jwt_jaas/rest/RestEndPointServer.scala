@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt_jaas
+package com.github.dfauth.jwt_jaas.rest
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http

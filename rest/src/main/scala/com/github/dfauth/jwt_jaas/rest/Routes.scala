@@ -1,17 +1,17 @@
-package com.github.dfauth.jwt_jaas
+package com.github.dfauth.jwt_jaas.rest
 
 import java.security.KeyPair
 import java.time.{ZoneId, ZonedDateTime}
 
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post, reject, onComplete}
 import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, get, onComplete, path, post, reject}
 import akka.http.scaladsl.server.PathMatcher._
 import akka.http.scaladsl.server.PathMatchers.Remaining
 import akka.http.scaladsl.server.Route
-import com.github.dfauth.jwt_jaas.CredentialsJsonSupport._
-import com.github.dfauth.jwt_jaas.MyDirectives.{authRejection, authenticate}
 import com.github.dfauth.jwt_jaas.jwt._
+import com.github.dfauth.jwt_jaas.rest.CredentialsJsonSupport._
+import com.github.dfauth.jwt_jaas.rest.MyDirectives.{authRejection, authenticate}
 import com.typesafe.scalalogging.LazyLogging
 import spray.json.{JsonWriter, RootJsonFormat}
 
@@ -29,7 +29,7 @@ object Routes extends LazyLogging {
     path("hello") {
       get {
         authenticate(jwtVerifier) { user =>
-          complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello to authenticated ${user.getUserId}"}"""))
+          complete(HttpEntity(ContentTypes.`application/json`, s"""{"say": "hello to authenticated ${user.getUser.getUserId}"}"""))
         }
       }
     }
@@ -52,14 +52,14 @@ object Routes extends LazyLogging {
     path("refresh") {
       get {
         authenticate(jwtVerifier) { u =>
-          val authToken: String = jwtBuilder.forSubject(u.getUserId).withExpiry(u.getExpiry().atZone(ZoneId.systemDefault())).withClaim("roles", u.getRoles).build()
+          val authToken: String = jwtBuilder.forSubject(u.getUser.getUserId).withExpiry(u.getUser.getExpiry().atZone(ZoneId.systemDefault())).withClaim("roles", u.getUser.getRoles).build()
           complete(HttpEntity(ContentTypes.`application/json`, s"""{"authorizationToken": "${authToken}"}"""))
         }
       }
     }
 
 
-  def genericGet0Endpoint[T](f:User => T)(implicit w: JsonWriter[T]):Route =
+  def genericGet0Endpoint[T](f:UserCtx => T)(implicit w: JsonWriter[T]):Route =
     path("endpoint") {
       get {
         authenticate(jwtVerifier) { user =>
@@ -69,7 +69,7 @@ object Routes extends LazyLogging {
       }
     }
 
-  def genericGet1Endpoint[T](f:User => String => T)(bWriter: RootJsonFormat[T]):Route =
+  def genericGet1Endpoint[T](f:UserCtx => String => T)(bWriter: RootJsonFormat[T]):Route =
     path("endpoint" / Remaining) { r =>
       get {
         authenticate(jwtVerifier) { user =>
@@ -79,7 +79,7 @@ object Routes extends LazyLogging {
       }
     }
 
-  def genericPostEndpoint[A, B](f:User => A => B)(implicit aReader: RootJsonFormat[A], bWriter: RootJsonFormat[B]):Route =
+  def genericPostEndpoint[A, B](f:UserCtx => A => B)(implicit aReader: RootJsonFormat[A], bWriter: RootJsonFormat[B]):Route =
     path("endpoint") {
       post {
         authenticate(jwtVerifier) { user =>
@@ -91,7 +91,7 @@ object Routes extends LazyLogging {
       }
     }
 
-  def genericPostFutureEndpoint[A, B](f:User => A => Future[B])(implicit aReader: RootJsonFormat[A], bWriter: RootJsonFormat[B]):Route =
+  def genericPostFutureEndpoint[A, B](f:UserCtx => A => Future[B])(implicit aReader: RootJsonFormat[A], bWriter: RootJsonFormat[B]):Route =
     path("endpoint") {
       post {
         authenticate(jwtVerifier) { user =>

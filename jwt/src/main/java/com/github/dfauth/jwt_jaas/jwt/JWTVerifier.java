@@ -19,10 +19,10 @@ public class JWTVerifier {
     private static final Function<Map<String, Object>,RoleBuilder> RBM = t -> new RoleBuilder().withSystemId((String) (t.get("systemId"))).withRoleName((String) (t.get("rolename")));
 
 
-    public Function<Claims, User> asUser = claims -> {
-        Set<RoleBuilder> roles = ((List<Map<String, Object>>) Optional.ofNullable(claims.get("roles", List.class)).orElse(Collections.emptyList())).stream().map(RBM).collect(Collectors.toSet());
-        String userId = claims.getSubject();
-        Date expiry = claims.getExpiration();
+    public Function<Jws<Claims>, User> asUser = claims -> {
+        Set<RoleBuilder> roles = ((List<Map<String, Object>>) Optional.ofNullable(claims.getBody().get("roles", List.class)).orElse(Collections.emptyList())).stream().map(RBM).collect(Collectors.toSet());
+        String userId = claims.getBody().getSubject();
+        Date expiry = claims.getBody().getExpiration();
         return new UserBuilder().withUserId(userId).withExpiry(expiry.toInstant()).withRoles(roles).build();
     };
 
@@ -32,13 +32,13 @@ public class JWTVerifier {
         this.publicKey = publicKey;
     }
 
-    public <T> TokenAuthentication<T> authenticateToken(String token, Function<Claims, T> f) {
+    public <T> TokenAuthentication<T> authenticateToken(String token, Function<Jws<Claims>, T> f) {
         try {
             Jws<Claims> claims = Jwts.parser()
                     .setSigningKey(publicKey)
                     .requireIssuer("me")
                     .parseClaimsJws(token);
-            return TokenAuthentication.Success.with(f.apply(claims.getBody()));
+            return TokenAuthentication.Success.with(f.apply(claims));
         } catch (RuntimeException e) {
             logger.error(e.getMessage(), e);
             return TokenAuthentication.Failure.with(e);

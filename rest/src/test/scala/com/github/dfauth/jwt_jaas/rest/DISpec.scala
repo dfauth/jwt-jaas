@@ -1,8 +1,8 @@
-package com.github.dfauth.jwt_jaas
+package com.github.dfauth.jwt_jaas.rest
 
 import akka.http.scaladsl.server.Route
-import com.github.dfauth.jwt_jaas.jwt.User
-import com.github.dfauth.jwt_jaas.JsonSupport._
+import com.github.dfauth.jwt_jaas.jwt.UserCtx
+import com.github.dfauth.jwt_jaas.rest.JsonSupport._
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.http.ContentType
 import io.restassured.response.Response
@@ -17,13 +17,13 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
 
   "any authenticated get endpoint" should "be able to propagate its user information" in {
 
-    val component = TestComponent(user => Result[String](user.getUserId))
+    val component = TestComponent(user => Result[String](user.getUser.getUserId))
 
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
-    import com.github.dfauth.jwt_jaas.Routes._
+    import com.github.dfauth.jwt_jaas.rest.Routes._
 
-    val routes:Route = login(handle) ~ genericGet0Endpoint(component.handleWithUser)
+    val routes:Route = login(authenticateFred) ~ genericGet0Endpoint(component.handleWithUser)
 
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
@@ -47,13 +47,13 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
 
   "any authenticated post endpoint" should "be able to propagate its user information" in {
 
-    val component = TestComponent2(user => (testPayload:Payload) => Result[String](s"${testPayload.payload} customised for ${user.getUserId}"))
+    val component = TestComponent2(user => (testPayload:Payload) => Result[String](s"${testPayload.payload} customised for ${user.getUser.getUserId}"))
 
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
-    import com.github.dfauth.jwt_jaas.Routes._
+    import com.github.dfauth.jwt_jaas.rest.Routes._
 
-    val routes:Route = login(handle) ~ genericPostEndpoint(component.handleWithUser)
+    val routes:Route = login(authenticateFred) ~ genericPostEndpoint(component.handleWithUser)
 
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
@@ -82,14 +82,14 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
 
 }
 
-case class TestComponent[T](f:User=>T) {
-  def handleWithUser(user: User):T = {
+case class TestComponent[T](f:UserCtx=>T) {
+  def handleWithUser(user: UserCtx):T = {
     f(user)
   }
 }
 
-case class TestComponent2[A,B](f:User=>A=>B) {
-  def handleWithUser(user: User)(a:A):B = {
+case class TestComponent2[A,B](f:UserCtx=>A=>B) {
+  def handleWithUser(user: UserCtx)(a:A):B = {
     f(user)(a)
   }
 }

@@ -1,8 +1,8 @@
-package com.github.dfauth.jwt_jaas
+package com.github.dfauth.jwt_jaas.rest
 
 import akka.http.scaladsl.server.Route
 import com.github.dfauth.jwt_jaas.ContextualPipeline._
-import com.github.dfauth.jwt_jaas.jwt.User
+import com.github.dfauth.jwt_jaas.jwt.UserCtx
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.http.ContentType
 import io.restassured.response.Response
@@ -17,17 +17,17 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
   "any authenticated get endpoint" should "be able to execute a function taking the user as well as a parameter" in {
 
+    import JsonSupport._
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
-    import com.github.dfauth.jwt_jaas.JsonSupport._
-    import com.github.dfauth.jwt_jaas.Routes._
+    import com.github.dfauth.jwt_jaas.rest.Routes._
     import spray.json._
 
-    val compose:User => String => Result[Int] = {
+    val compose:UserCtx => String => Result[Int] = {
       user => (s:String) => Result(s.toInt)
     }
 
-    val routes:Route = login(handle) ~ genericGet1Endpoint(compose)(intResultFormat)
+    val routes:Route = login(authenticateFred) ~ genericGet1Endpoint(compose)(intResultFormat)
 
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
@@ -55,15 +55,15 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
   "any authenticated post endpoint" should "be able to execute a function taking the user as well as a parameter" in {
 
+    import JsonSupport._
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
-    import com.github.dfauth.jwt_jaas.JsonSupport._
-    import com.github.dfauth.jwt_jaas.Routes._
+    import com.github.dfauth.jwt_jaas.rest.Routes._
     import spray.json._
 
-    val compose:User => Payload => Result[Int] = user => (p:Payload) => Result(p.payload.toInt)
+    val compose:UserCtx => Payload => Result[Int] = user => (p:Payload) => Result(p.payload.toInt)
 
-    val routes:Route = login(handle) ~ genericPostEndpoint(compose)
+    val routes:Route = login(authenticateFred) ~ genericPostEndpoint(compose)
 
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
@@ -92,14 +92,14 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
   "any authenticated post endpoint" should "be able to propagate its user information though a pipeline of chained functions" in {
 
+    import JsonSupport._
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
-    import com.github.dfauth.jwt_jaas.JsonSupport._
-    import com.github.dfauth.jwt_jaas.Routes._
+    import com.github.dfauth.jwt_jaas.rest.Routes._
     import spray.json._
 
     val cache = Map("fred" -> 2.0)
-    val routes:Route = login(handle) ~ genericPostEndpoint(compose(cache))
+    val routes:Route = login(authenticateFred) ~ genericPostEndpoint(compose(cache))
 
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
@@ -145,13 +145,13 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
   "any authenticated post endpoint" should "be able to propagate its user information though a pipeline of chained functions including futures" in {
 
+    import JsonSupport._
     import TestUtils._
     import akka.http.scaladsl.server.Directives._
-    import com.github.dfauth.jwt_jaas.JsonSupport._
-    import com.github.dfauth.jwt_jaas.Routes._
+    import com.github.dfauth.jwt_jaas.rest.Routes._
     import spray.json._
 
-    val routes:Route = login(handle) ~ genericPostFutureEndpoint(composeWithFuture)
+    val routes:Route = login(authenticateFred) ~ genericPostFutureEndpoint(composeWithFuture)
 
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
@@ -178,7 +178,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     }
   }
 
-  def compose(cache:Map[String, Double]): User => Payload => Result[Int] = {
+  def compose(cache:Map[String, Double]): UserCtx => Payload => Result[Int] = {
     user => wrap(extractPayload).
             map[Int](toInt).
             mapWithContext(lookup(cache)).
@@ -187,7 +187,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
             apply(user)
   }
 
-  def composeWithFuture: User => Payload => Future[Result[Int]] = {
+  def composeWithFuture: UserCtx => Payload => Future[Result[Int]] = {
     user => wrap(extractPayload).
             map[Int](toInt).
             map(toFuture).
@@ -205,9 +205,9 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     logger.info(s"toInt: ${s}")
     s.toInt
   }
-  def lookup(cache:Map[String,Double]):User => Int => Double  = { user =>
+  def lookup(cache:Map[String,Double]):UserCtx => Int => Double  = { user =>
     logger.info(s"lookup: ${user}")
-    k => k * cache.getOrElse(user.getUserId, 1.0)
+    k => k * cache.getOrElse(user.getUser.getUserId, 1.0)
   }
   val doubleToInt:Double => Int = { d =>
     logger.info(s"doubleToInt: ${d}")

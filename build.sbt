@@ -47,56 +47,56 @@ val kafkaClient = "org.apache.kafka" % "kafka-clients" % kafkaVersion withSource
 
 val commonJavaDeps = Seq(slf4j, logback, testng)
 
+val jwtLibraryDependencies = commonJavaDeps ++ Seq(jjwt_api, jjwt_impl, jjwt_jackson, testng)
+
 lazy val jwt = (project in file("jwt"))
   .enablePlugins(TestNGPlugin)
   .settings(
     testNGVersion := "6.14.3",
-    libraryDependencies ++= commonJavaDeps,
-    libraryDependencies ++= Seq(
-      jjwt_api,
-      jjwt_impl,
-      jjwt_jackson,
-      testng
-    )
+    libraryDependencies ++= jwtLibraryDependencies
   )
+
+val restLibraryDependencies = commonJavaDeps ++ commonScalaDeps ++ Seq(akkaHttp,
+  akkaStream,
+  restAssurred,
+  hamcrest)
 
 lazy val rest = (project in file("rest"))
   .settings(
-    libraryDependencies ++= commonJavaDeps,
-    libraryDependencies ++= commonScalaDeps,
-    libraryDependencies ++= Seq(
-      akkaHttp,
-      akkaStream,
-      restAssurred,
-      hamcrest
-    )
+    libraryDependencies ++= restLibraryDependencies
   ).dependsOn(jwt, common)
+
+val kafkaLibraryDependencies = commonScalaDeps ++ Seq(akkaHttp,
+  akkaStream,
+  scalaJava8,
+  kafkaClient,
+  embeddedKafka,
+  embeddedKafkaStreams,
+  javax_ws_rs,
+  logback
+)
 
 lazy val kafka = (project in file("kafka"))
   .settings(
-    libraryDependencies ++= commonScalaDeps,
-    libraryDependencies ++= Seq(
-      akkaHttp,
-      akkaStream,
-      scalaJava8,
-      kafkaClient,
-      embeddedKafka,
-      embeddedKafkaStreams,
-      javax_ws_rs,
-      logback
-    )
+    libraryDependencies ++= kafkaLibraryDependencies
   ).dependsOn(common, jwt)
+
+val commonLibraryDependencies = commonScalaDeps ++ Seq(akkaHttp,
+  logback
+)
 
 lazy val common = (project in file("common"))
   .settings(
-    libraryDependencies ++= commonScalaDeps,
-    libraryDependencies ++= Seq(
-      logback
-    )
+    libraryDependencies ++= commonLibraryDependencies
   )
 
 lazy val root = (project in file("."))
-  .aggregate(rest, jwt, kafka, common)
+  .settings(
+    libraryDependencies ++= commonLibraryDependencies
+                        ++ restLibraryDependencies
+                        ++ jwtLibraryDependencies
+                        ++ kafkaLibraryDependencies
+  ).dependsOn(rest, jwt, kafka, common)
 
 
 

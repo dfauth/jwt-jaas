@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt_jaas
+package com.github.dfauth.jwt_jaas.rest
 
 import java.security.KeyFactory
 import java.security.spec.{PKCS8EncodedKeySpec, X509EncodedKeySpec}
@@ -25,7 +25,7 @@ object Main extends LazyLogging {
     val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusSeconds(20)).build()
     println(s"token is ${token}")
 
-    import com.github.dfauth.jwt_jaas.Routes._
+    import com.github.dfauth.jwt_jaas.rest.Routes._
     val endPoint = RestEndPointServer(hello(jwtVerifier))
     val bindingFuture = endPoint.start()
 
