@@ -3,10 +3,13 @@ package com.github.dfauth.jws_jaas
 import java.security.KeyPair
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
+import akka.Done
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
 import com.github.dfauth.jwt_jaas.ContextualPipeline.{adaptFuture, adaptFutureWithContext, wrap}
 import com.github.dfauth.jwt_jaas.jwt._
+import com.github.dfauth.jwt_jaas.kafka.JsonSupport._
 import com.github.dfauth.jwt_jaas.kafka._
 import com.github.dfauth.jwt_jaas.rest.Routes._
 import com.github.dfauth.jwt_jaas.rest.TestUtils._
@@ -22,6 +25,7 @@ import spray.json._
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.util.{Success, Try}
 
 
 class TestSpec
@@ -41,7 +45,7 @@ class TestSpec
     import JsonSupport._
 
       // REST setup
-    val routes:Route = login(authenticateFred) ~ genericPostFutureEndpoint(composeWithFuture)
+    val routes:Route = login(authenticateFred) ~ genericPostFutureEndpoint(composeWithFuture)(payloadFormat, doneFormat)
 
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
@@ -112,20 +116,20 @@ class TestSpec
       apply(user)
   }
 
-  def composeWithFuture: UserCtx => Payload[String] => Future[Result[Int]] = {
-//  def composeWithFuture: User => Payload[String] => Future[Try[Done]] = {
-//    user => p => {
-//      val usrCtx = UserContext(user.authorizationToken,Payload("testMessage"))
-//      producer.send(usrCtx).onComplete(logSuccess)
-//    }.apply(user)
+//  def composeWithFuture: UserCtx => Payload[String] => Future[Result[Int]] = {
+  def composeWithFuture: UserCtx => Payload[String] => Future[Done] = {
+    user => p => {
+      val usrCtx = UserContext(user.getToken,Payload("testMessage"))
+      producer.send(usrCtx).onComplete(logSuccess)
+    }.apply(user)
 
-    user => wrap(extractPayload).
-      map[Int](toInt).
-      map(toFuture).
-      mapWithContext(adaptFutureWithContext(lookup(userFactorCache.cache))).
-      map(adaptFuture(doubleToInt)).
-      map(adaptFuture(toResult)).
-      apply(user)
+//    user => wrap(extractPayload).
+//      map[Int](toInt).
+//      map(toFuture).
+//      mapWithContext(adaptFutureWithContext(lookup(userFactorCache.cache))).
+//      map(adaptFuture(doubleToInt)).
+//      map(adaptFuture(toResult)).
+//      apply(user)
   }
 
   val extractPayload:Payload[String] => String  = { p =>
@@ -158,5 +162,15 @@ class TestSpec
 
   object userFactorCache {
     val cache = Map("fred" -> 2.0)
+  }
+
+  object JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
+    implicit val doneFormat = new RootJsonFormat[Done] {
+      def write(done:Done) = JsBoolean(true)
+      def read(value: JsValue) = value match {
+        case JsTrue => Done
+        case x => deserializationError("Expected JsBoolean, but got " + x)
+      }
+    }
   }
 }

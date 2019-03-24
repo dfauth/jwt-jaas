@@ -1,4 +1,4 @@
-package com.github.dfauth.jwt_jaas
+package com.github.dfauth.jwt_jaas.common
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.Future

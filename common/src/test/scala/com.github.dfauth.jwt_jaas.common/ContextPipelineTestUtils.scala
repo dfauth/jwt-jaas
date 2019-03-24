@@ -1,6 +1,6 @@
 package com.github.dfauth.jwt_jaas.common
 
-import com.github.dfauth.jwt_jaas.ContextualPipeline.{adaptFuture, adaptFutureWithContext, wrap}
+import com.github.dfauth.jwt_jaas.common.ContextualPipeline.{adaptFuture, adaptFutureWithContext, wrap}
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Future
