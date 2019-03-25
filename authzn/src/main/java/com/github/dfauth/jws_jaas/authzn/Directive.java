@@ -3,8 +3,7 @@ package com.github.dfauth.jws_jaas.authzn;
 import java.util.Collections;
 import java.util.Set;
 
-import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.ALLOW;
-import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.DENY;
+import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecisionEnum.*;
 import static com.github.dfauth.jws_jaas.authzn.PermissionDecisionContext.NEVER;
 
 public class Directive {
@@ -17,7 +16,7 @@ public class Directive {
     }
 
     public Directive(Principal principal, Permission permission, String action) {
-        this(Collections.singleton(principal), permission, AuthorizationDecision.valueOf(action));
+        this(Collections.singleton(principal), permission, AuthorizationDecisionEnum.valueOf(action));
     }
 
     public Directive(Set<Principal> principals, Permission permission) {

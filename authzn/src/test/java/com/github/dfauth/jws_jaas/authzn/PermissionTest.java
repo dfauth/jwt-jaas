@@ -2,12 +2,11 @@ package com.github.dfauth.jws_jaas.authzn;
 
 import org.testng.annotations.Test;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.ALLOW;
-import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.DENY;
 import static com.github.dfauth.jws_jaas.authzn.PermissionTest.WasRunAssertion.State.NOT_RUN;
 import static com.github.dfauth.jws_jaas.authzn.PermissionTest.WasRunAssertion.State.WAS_RUN;
 import static com.github.dfauth.jws_jaas.authzn.PrincipalType.ROLE;
@@ -64,7 +63,7 @@ public class PermissionTest {
             assertFalse(a.wasRun()); // expecting authzn failure
         } catch (SecurityException e) {
             // expected in this case
-            assertEquals(e.getMessage(), subject+" is not authorized to perform actions "+perm.getActions()+" on resource "+perm.getResource());
+            assertEquals(e.getMessage(), subject+" is not authorized to perform actions "+ Collections.singleton(TestAction.READ)+" on resource /a/b/c/d/e/f/g");
         }
 
         try {
@@ -79,11 +78,11 @@ public class PermissionTest {
     }
 
     private void assertAllowed(AuthorizationDecision decision) {
-        assertEquals(decision, ALLOW);
+        assertTrue(decision.isAllowed());
     }
 
     private void assertDenied(AuthorizationDecision decision) {
-        assertEquals(decision, DENY);
+        assertTrue(decision.isDenied());
     }
 
     class RolePermission extends Permission {
