@@ -3,16 +3,16 @@ package com.github.dfauth.jws_jaas.authzn;
 import org.testng.annotations.Test;
 
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
 import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.ALLOW;
 import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.DENY;
+import static com.github.dfauth.jws_jaas.authzn.PermissionTest.WasRunAssertion.State.NOT_RUN;
+import static com.github.dfauth.jws_jaas.authzn.PermissionTest.WasRunAssertion.State.WAS_RUN;
 import static com.github.dfauth.jws_jaas.authzn.PrincipalType.ROLE;
 import static com.github.dfauth.jws_jaas.authzn.PrincipalType.USER;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.*;
 
 public class PermissionTest {
 
@@ -58,8 +58,24 @@ public class PermissionTest {
         Directive directive = new Directive(ROLE.of("superuser"), perm);
         AuthorizationPolicy policy = new AuthorizationPolicyImpl(directive);
 
-        policy.permit(subject, new TestPermission("/a/b/c/d/e/f/g", TestAction.READ)).run(() -> new Optional(true)).
+        try {
+            AuthorizationDecision decision = policy.permit(subject, new TestPermission("/a/b/c/d/e/f/g", TestAction.READ));
+            WasRunAssertion a = decision.run(() -> new WasRunAssertion().run());
+            assertFalse(a.wasRun()); // expecting authzn failure
+        } catch (SecurityException e) {
+            // expected in this case
+            assertEquals(e.getMessage(), subject+" is not authorized to perform actions "+perm.getActions()+" on resource "+perm.getResource());
+        }
 
+        try {
+            // add super user role
+            Subject subject1 = subject.with(ROLE.of("superuser"));
+            AuthorizationDecision decision = policy.permit(subject1, new TestPermission("/a/b/c/d/e/f/g", TestAction.READ));
+            WasRunAssertion a = decision.run(() -> new WasRunAssertion().run());
+            assertTrue(a.wasRun()); // expecting authzn failure
+        } catch (SecurityException e) {
+            fail("Oops, expected it to be authorized");
+        }
     }
 
     private void assertAllowed(AuthorizationDecision decision) {
@@ -111,6 +127,30 @@ public class PermissionTest {
             Set<Directive> directives = new HashSet<>();
             hierarchy.walk(resource -> resource.payload.ifPresent(d -> directives.add(d)));
             return directives;
+        }
+    }
+
+    static class WasRunAssertion {
+        private State state = NOT_RUN;
+        public WasRunAssertion run() {
+            state = WAS_RUN;
+            return this;
+        }
+
+        public State state() {
+            return state;
+        }
+
+        public boolean wasRun() {
+            return state.wasRun();
+        }
+
+        static enum State {
+            NOT_RUN, WAS_RUN;
+
+            public boolean wasRun() {
+                return this == WAS_RUN;
+            }
         }
     }
 }

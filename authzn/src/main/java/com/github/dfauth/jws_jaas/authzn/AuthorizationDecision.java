@@ -8,10 +8,16 @@ import java.util.function.BinaryOperator;
 
 public enum AuthorizationDecision {
 
-    ALLOW,
-    DENY;
+    ALLOW(new AllowRunner()),
+    DENY(new DenyRunner());
 
     private static final Logger logger = LoggerFactory.getLogger(AuthorizationDecision.class);
+
+    private final Runner runner;
+
+    AuthorizationDecision(Runner runner) {
+        this.runner = runner;
+    }
 
     public boolean isAllowed() {
         return this == ALLOW;
@@ -34,19 +40,31 @@ public enum AuthorizationDecision {
     }
 
     public <R> R run(Callable<R> callable) throws SecurityException {
-        try {
-            if(isAllowed()) {
+        return this.runner.run(callable);
+    }
+
+    interface Runner {
+        <R> R run(Callable<R> callable) throws SecurityException;
+    }
+
+    static class AllowRunner implements Runner {
+
+        @Override
+        public <R> R run(Callable<R> callable) throws SecurityException {
+            try {
                 return callable.call();
-            } else {
-                throw new SecurityException("Oops, not allowed");
+            } catch (Exception e) {
+                logger.error(e.getMessage(), e);
+                throw new RuntimeException(e);
             }
-        } catch (SecurityException e) {
-            logger.info(e.getMessage(), e);
-            throw e;
-        } catch (Exception e) {
-            logger.info(e.getMessage(), e);
-            throw new RuntimeException(e);
         }
     }
 
+    static class DenyRunner implements Runner {
+
+        @Override
+        public <R> R run(Callable<R> callable) throws SecurityException {
+            throw new SecurityException("Oops");
+        }
+    }
 }

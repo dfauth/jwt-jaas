@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ImmutableSubject implements Subject {
     private final Principal userPrincipal;
@@ -38,5 +39,14 @@ public class ImmutableSubject implements Subject {
         Set tmp = new HashSet(rolePrincipals);
         tmp.add(p);
         return new ImmutableSubject(userPrincipal, tmp);
+    }
+
+    public Principal getUserPrincipal() {
+        return userPrincipal;
+    }
+
+    @Override
+    public String toString() {
+        return "user: "+userPrincipal.getName() + " roles: "+rolePrincipals.stream().map(p -> p.getName()).collect(Collectors.toSet());
     }
 }
