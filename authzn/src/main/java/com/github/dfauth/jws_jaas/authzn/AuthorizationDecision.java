@@ -18,7 +18,22 @@ public interface AuthorizationDecision {
     }
 
     default AuthorizationDecision and(AuthorizationDecision that) {
-        return isDenied() ? that : this;
+        return isDenied() ? new AuthorizationDecision() {
+            @Override
+            public boolean isAllowed() {
+                return false;
+            }
+
+            @Override
+            public boolean isDenied() {
+                return true;
+            }
+
+            @Override
+            public <R> R run(Callable<R> callable) throws SecurityException {
+                throw new SecurityException("denied");
+            }
+        } : that;
     }
 
     <R> R run(Callable<R> callable) throws SecurityException;

@@ -1,5 +1,6 @@
 package com.github.dfauth.jws_jaas.authzn;
 
+import com.github.dfauth.jws_jaas.authzn.Assertions.WasRunAssertion;
 import org.testng.annotations.Test;
 
 import java.util.Collections;
@@ -7,8 +8,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import static com.github.dfauth.jws_jaas.authzn.PermissionTest.WasRunAssertion.State.NOT_RUN;
-import static com.github.dfauth.jws_jaas.authzn.PermissionTest.WasRunAssertion.State.WAS_RUN;
+import static com.github.dfauth.jws_jaas.authzn.Assertions.assertAllowed;
+import static com.github.dfauth.jws_jaas.authzn.Assertions.assertDenied;
 import static com.github.dfauth.jws_jaas.authzn.PrincipalType.ROLE;
 import static com.github.dfauth.jws_jaas.authzn.PrincipalType.USER;
 import static org.testng.Assert.*;
@@ -77,14 +78,6 @@ public class PermissionTest {
         }
     }
 
-    private void assertAllowed(AuthorizationDecision decision) {
-        assertTrue(decision.isAllowed());
-    }
-
-    private void assertDenied(AuthorizationDecision decision) {
-        assertTrue(decision.isDenied());
-    }
-
     class RolePermission extends Permission {
 
     }
@@ -126,30 +119,6 @@ public class PermissionTest {
             Set<Directive> directives = new HashSet<>();
             hierarchy.walk(resource -> resource.payload.ifPresent(d -> directives.add(d)));
             return directives;
-        }
-    }
-
-    static class WasRunAssertion {
-        private State state = NOT_RUN;
-        public WasRunAssertion run() {
-            state = WAS_RUN;
-            return this;
-        }
-
-        public State state() {
-            return state;
-        }
-
-        public boolean wasRun() {
-            return state.wasRun();
-        }
-
-        static enum State {
-            NOT_RUN, WAS_RUN;
-
-            public boolean wasRun() {
-                return this == WAS_RUN;
-            }
         }
     }
 }
