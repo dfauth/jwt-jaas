@@ -3,8 +3,8 @@ package com.github.dfauth.jws_jaas.authzn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.function.BinaryOperator;
 
 public enum AuthorizationDecision {
 
@@ -21,8 +21,16 @@ public enum AuthorizationDecision {
         return this == DENY;
     }
 
-    public AuthorizationDecision compose(AuthorizationDecision that) {
-        return isDenied() ? this : that;
+    public static BinaryOperator<AuthorizationDecision> or = (AuthorizationDecision _this, AuthorizationDecision _that) ->  _this.or(_that);
+
+    public static BinaryOperator<AuthorizationDecision> and = (AuthorizationDecision _this, AuthorizationDecision _that) ->  _this.and(_that);
+
+    public AuthorizationDecision or(AuthorizationDecision that) {
+        return isAllowed() ? ALLOW : that;
+    }
+
+    public AuthorizationDecision and(AuthorizationDecision that) {
+        return isDenied() ? DENY : this;
     }
 
     public <R> R run(Callable<R> callable) throws SecurityException {
@@ -39,14 +47,6 @@ public enum AuthorizationDecision {
             logger.info(e.getMessage(), e);
             throw new RuntimeException(e);
         }
-    }
-
-    public static Optional<AuthorizationDecision> compose(Optional<AuthorizationDecision> o1, Optional<AuthorizationDecision> o2) {
-        return o1.map(
-                a1 -> o2.map(
-                        a2 -> Optional.of(a1.compose(a2))
-                ).orElse(o1)
-        ).orElse(o2);
     }
 
 }
