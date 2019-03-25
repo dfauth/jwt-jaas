@@ -13,9 +13,13 @@ public interface AuthorizationDecision {
 
     BinaryOperator<AuthorizationDecision> and = (AuthorizationDecision _this, AuthorizationDecision _that) ->  _this.and(_that);
 
-    AuthorizationDecision or(AuthorizationDecision that);
+    default AuthorizationDecision or(AuthorizationDecision that) {
+        return isAllowed() ? this : that;
+    }
 
-    AuthorizationDecision and(AuthorizationDecision that);
+    default AuthorizationDecision and(AuthorizationDecision that) {
+        return isDenied() ? that : this;
+    }
 
     <R> R run(Callable<R> callable) throws SecurityException;
 

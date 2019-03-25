@@ -1,6 +1,7 @@
 package com.github.dfauth.jws_jaas.authzn;
 
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecisionEnum.DENY;
 import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.or;
@@ -17,7 +18,26 @@ public abstract class AuthorizationPolicy {
                                 ).reduce(DENY, or)                                                         // reduce it accepting any principal allowed
                         ).findFirst().                                                                      // the first entry has spriority
                         orElse(DENY);                                                                       // but  if none is found, deny
-        return new AuthorizationDecisionRunner(decision, subject, permission);
+        return new AuthorizationDecision(){
+            @Override
+            public boolean isAllowed() {
+                return decision.isAllowed();
+            }
+
+            @Override
+            public boolean isDenied() {
+                return decision.isDenied();
+            }
+
+            @Override
+            public <R> R run(Callable<R> callable) throws SecurityException {
+                try {
+                    return decision.run(callable);
+                } catch(SecurityException e) {
+                    throw new SecurityException(subject+" is not authorized to perform actions "+permission.getActions()+" on resource "+permission.getResource());
+                }
+            }
+        };
     }
 
     protected abstract ResourceResolver getResourceResolver();

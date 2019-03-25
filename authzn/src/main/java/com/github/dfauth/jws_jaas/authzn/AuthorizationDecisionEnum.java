@@ -26,14 +26,6 @@ public enum AuthorizationDecisionEnum implements AuthorizationDecision {
         return this == DENY;
     }
 
-    public AuthorizationDecision or(AuthorizationDecision that) {
-        return isAllowed() ? ALLOW : that;
-    }
-
-    public AuthorizationDecision and(AuthorizationDecision that) {
-        return isDenied() ? DENY : this;
-    }
-
     public <R> R run(Callable<R> callable) throws SecurityException {
         return this.runner.run(callable);
     }
