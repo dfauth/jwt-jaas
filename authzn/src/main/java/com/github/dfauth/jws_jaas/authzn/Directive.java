@@ -8,25 +8,29 @@ import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.DENY;
 import static com.github.dfauth.jws_jaas.authzn.PermissionDecisionContext.NEVER;
 
 public class Directive {
-    private final Set<ImmutablePrincipal> principals;
+    private final Set<Principal> principals;
     private final Permission permission;
     private final AuthorizationDecision decision;
 
-    public Directive(ImmutablePrincipal principal, Permission permission) {
+    public Directive(Principal principal, Permission permission) {
         this(Collections.singleton(principal), permission, ALLOW);
     }
 
-    public Directive(ImmutablePrincipal principal, Permission permission, String action) {
-        this(Collections.singleton(principal), permission, ALLOW);
+    public Directive(Principal principal, Permission permission, String action) {
+        this(Collections.singleton(principal), permission, AuthorizationDecision.valueOf(action));
     }
 
-    public Directive(Set<ImmutablePrincipal> principals, Permission permission, AuthorizationDecision authznAction) {
+    public Directive(Set<Principal> principals, Permission permission) {
+        this(principals, permission, ALLOW);
+    }
+    
+    public Directive(Set<Principal> principals, Permission permission, AuthorizationDecision authznAction) {
         this.principals = principals;
         this.permission = permission;
         this.decision = authznAction;
     }
 
-    public Set<ImmutablePrincipal> getPrincipals() {
+    public Set<Principal> getPrincipals() {
         return principals;
     }
 

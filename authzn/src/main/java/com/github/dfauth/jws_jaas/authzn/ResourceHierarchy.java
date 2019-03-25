@@ -112,4 +112,9 @@ public class ResourceHierarchy<K,V> {
         findNearest(path, r -> stack.push(r));
         return stack;
     }
+
+    public void walk(Consumer<Resource<K, V>> consumer) {
+        children.values().forEach(c -> c.walk(consumer));
+        resource.ifPresent(consumer);
+    }
 }

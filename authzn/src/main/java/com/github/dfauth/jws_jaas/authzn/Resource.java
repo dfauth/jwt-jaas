@@ -1,7 +1,9 @@
 package com.github.dfauth.jws_jaas.authzn;
 
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class Resource<K,V> {
 
@@ -40,5 +42,22 @@ public class Resource<K,V> {
             return this.path.equals(other.path) && this.payload.equals(other.payload);
         }
         return false;
+    }
+
+    public boolean implies(Resource resource) {
+        // one resource implies another if it can be considered a 'parent'
+        Iterator<K> parent = getIterablePath().iterator();
+        Iterator<K> child = resource.getIterablePath().iterator();
+        while(parent.hasNext()) {
+            K k = parent.next();
+            if(child.hasNext()) {
+                if(!k.equals(child.next())) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 }

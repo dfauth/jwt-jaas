@@ -33,4 +33,10 @@ public class ImmutableSubject implements Subject {
         tmp.add(userPrincipal);
         return Collections.unmodifiableSet(tmp);
     }
+
+    public Subject with(ImmutablePrincipal p) {
+        Set tmp = new HashSet(rolePrincipals);
+        tmp.add(p);
+        return new ImmutableSubject(userPrincipal, tmp);
+    }
 }

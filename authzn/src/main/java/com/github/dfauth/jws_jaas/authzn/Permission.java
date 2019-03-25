@@ -28,6 +28,10 @@ public abstract class Permission {
         this(ROOT_RESOURCE, actions);
     }
 
+    public Permission(String resource, Action action) {
+        this(resource, Collections.singleton(action));
+    }
+
     public Permission(String resource, Set<Action> actions) {
         this.resource = resource;
         this.actions = actions;
@@ -80,6 +84,10 @@ public abstract class Permission {
 
     public String getResource() {
         return resource;
+    }
+
+    public Set<Action> getActions() {
+        return this.actions;
     }
 
 //    public abstract Optional<AuthorizationDecision> isAuthorizedBy(ResourceActionAuthorizationContext ctx);
