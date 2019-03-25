@@ -90,13 +90,20 @@ lazy val common = (project in file("common"))
     libraryDependencies ++= commonLibraryDependencies
   )
 
+val authznLibraryDependencies = commonJavaDeps //++ Seq(logback)
+
+lazy val authzn = (project in file("authzn"))
+  .settings(
+    libraryDependencies ++= authznLibraryDependencies
+  )
+
 lazy val root = (project in file("."))
   .settings(
     libraryDependencies ++= commonLibraryDependencies
                         ++ restLibraryDependencies
                         ++ jwtLibraryDependencies
                         ++ kafkaLibraryDependencies
-  ).dependsOn(rest, jwt, kafka, common)
+  ).dependsOn(rest, jwt, kafka, common, authzn)
 
 
 
