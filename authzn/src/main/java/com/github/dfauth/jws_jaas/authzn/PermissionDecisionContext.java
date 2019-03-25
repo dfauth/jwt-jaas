@@ -1,6 +1,6 @@
 package com.github.dfauth.jws_jaas.authzn;
 
-import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecision.DENY;
+import static com.github.dfauth.jws_jaas.authzn.AuthorizationDecisionEnum.DENY;
 
 public interface PermissionDecisionContext {
 
