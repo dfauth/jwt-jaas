@@ -4,14 +4,13 @@ import com.github.dfauth.jws_jaas.authzn.Assertions.WasRunAssertion;
 import org.testng.annotations.Test;
 
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.function.Predicate;
 
+import static com.github.dfauth.jws_jaas.authzn.Actions.*;
 import static com.github.dfauth.jws_jaas.authzn.Assertions.assertAllowed;
 import static com.github.dfauth.jws_jaas.authzn.Assertions.assertDenied;
 import static com.github.dfauth.jws_jaas.authzn.PrincipalType.ROLE;
 import static com.github.dfauth.jws_jaas.authzn.PrincipalType.USER;
+import static com.github.dfauth.jws_jaas.authzn.TestUtils.*;
 import static org.testng.Assert.*;
 
 public class PermissionTest {
@@ -32,7 +31,7 @@ public class PermissionTest {
     public void testPolicyRole() {
 
         ImmutableSubject subject = new ImmutableSubject(USER.of("fred"), ROLE.of("admin"), ROLE.of("user"));
-        Permission perm = new TestPermission("/a/b/c/d", Actions.using(TestAction.class).parse("read"));
+        Permission perm = new TestPermission("/a/b/c/d", using(TestAction.class).parse("read"));
         Directive directive = new Directive(ROLE.of("superuser"), perm);
         AuthorizationPolicy policy = new AuthorizationPolicyImpl(directive);
 
@@ -54,7 +53,7 @@ public class PermissionTest {
     public void testRunner() {
 
         ImmutableSubject subject = new ImmutableSubject(USER.of("fred"), ROLE.of("admin"), ROLE.of("user"));
-        Permission perm = new TestPermission("/a/b/c/d", Actions.using(TestAction.class).parse("*"));
+        Permission perm = new TestPermission("/a/b/c/d", using(TestAction.class).parse("*"));
         Directive directive = new Directive(ROLE.of("superuser"), perm);
         AuthorizationPolicy policy = new AuthorizationPolicyImpl(directive);
 
@@ -75,50 +74,6 @@ public class PermissionTest {
             assertTrue(a.wasRun()); // expecting authzn failure
         } catch (SecurityException e) {
             fail("Oops, expected it to be authorized");
-        }
-    }
-
-    class RolePermission extends Permission {
-
-    }
-
-    class TestPermission extends Permission {
-
-        public TestPermission(String resource, Set<Action> actions) {
-            super(resource, actions);
-        }
-
-        public TestPermission(String resource, TestAction action) {
-            super(resource, action);
-        }
-    }
-
-    enum TestAction implements Action {
-        READ, WRITE
-    }
-
-    class AuthorizationPolicyImpl extends AuthorizationPolicy {
-
-        ResourceHierarchy<String, Directive> hierarchy = new ResourceHierarchy<>();
-
-        public AuthorizationPolicyImpl(Directive directive) {
-            hierarchy.add(new SimpleResource<>(directive.getPermission().getResource(), directive));
-        }
-
-        @Override
-        protected ResourceResolver getResourceResolver() {
-            return resource1 -> (ResourceResolver.ResourceResolverContext) resource2 ->
-                    hierarchy.findAllResourcesInPath(resource2.getIterablePath()).stream().filter((Predicate<Resource<String, Directive>>) resource ->
-                            resource1.implies(resource2)).
-                            findFirst().
-                            isPresent();
-        }
-
-        @Override
-        Set<Directive> directivesFor(Permission permission) {
-            Set<Directive> directives = new HashSet<>();
-            hierarchy.walk(resource -> resource.payload.ifPresent(d -> directives.add(d)));
-            return directives;
         }
     }
 }

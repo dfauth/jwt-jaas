@@ -97,13 +97,20 @@ lazy val authzn = (project in file("authzn"))
     libraryDependencies ++= authznLibraryDependencies
   )
 
+val authznScalaLibraryDependencies = commonJavaDeps ++ commonScalaDeps
+
+lazy val authznScala = (project in file("authzn-scala"))
+  .settings(
+    libraryDependencies ++= authznScalaLibraryDependencies
+  ).dependsOn(authzn % "compile->compile;test->test")
+
 lazy val root = (project in file("."))
   .settings(
     libraryDependencies ++= commonLibraryDependencies
                         ++ restLibraryDependencies
                         ++ jwtLibraryDependencies
                         ++ kafkaLibraryDependencies
-  ).dependsOn(rest, jwt, kafka, common, authzn)
+  ).dependsOn(rest, jwt, kafka, common, authzn, authznScala)
 
 
 

@@ -1,5 +1,7 @@
 package com.github.dfauth.jws_jaas.authzn;
 
+import org.testng.asserts.Assertion;
+
 import static com.github.dfauth.jws_jaas.authzn.Assertions.WasRunAssertion.State.NOT_RUN;
 import static com.github.dfauth.jws_jaas.authzn.Assertions.WasRunAssertion.State.WAS_RUN;
 import static org.testng.Assert.assertTrue;
