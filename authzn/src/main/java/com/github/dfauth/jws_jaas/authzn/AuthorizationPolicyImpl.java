@@ -11,7 +11,7 @@ public class AuthorizationPolicyImpl extends AuthorizationPolicy {
     ResourceHierarchy<String, Directive> hierarchy = new ResourceHierarchy<>();
 
     public AuthorizationPolicyImpl(Directive directive) {
-        Collections.singletonList(directive);
+        this(Collections.singletonList(directive));
     }
 
     public AuthorizationPolicyImpl(List<Directive> directives) {
