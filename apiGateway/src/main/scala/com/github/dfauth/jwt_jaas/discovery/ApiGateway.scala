@@ -3,12 +3,14 @@ package com.github.dfauth.jwt_jaas.discovery
 import java.net.URL
 
 import akka.actor.ActorSystem
+import akka.http.javadsl.settings.ClientConnectionSettings
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives.{as, complete, entity, extract, get, path, post}
 import akka.http.scaladsl.server.RouteConcatenation._
 import akka.http.scaladsl.server.{Route, RouteResult}
+import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.github.dfauth.jwt_jaas.rest.RestEndPointServer
@@ -16,9 +18,11 @@ import com.typesafe.scalalogging.LazyLogging
 import io.restassured.RestAssured.given
 import io.restassured.http.ContentType
 import org.hamcrest.Matchers.equalTo
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat}
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 object ApiGateway extends LazyLogging {
 
@@ -36,11 +40,13 @@ object ApiGateway extends LazyLogging {
       val url = b.getURL()
       val flow = Http().outgoingConnection(url.getHost, url.getPort)
       path(b.path) {
-        get {
-          extract(_.request) { req ⇒
-            val futureResponse = Source.single(req).via(flow).runWith(Sink.head)
-            complete(futureResponse)
+        extract(_.request) { req ⇒
+          val futureResponse = Source.single(req).via(flow).runWith(Sink.head)
+          futureResponse.onComplete {
+            case Success(res) => logger.info("res: "+res)
+            case Failure(t) => logger.info(t.getMessage, t)
           }
+          complete(futureResponse)
         }
       }
     }

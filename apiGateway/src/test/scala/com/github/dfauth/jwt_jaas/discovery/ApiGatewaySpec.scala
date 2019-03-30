@@ -2,29 +2,39 @@ package com.github.dfauth.jwt_jaas.discovery
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.http.scaladsl.server.Directives.{complete, get, path}
+import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import com.github.dfauth.jwt_jaas.rest.RestEndPointServer
+import com.github.dfauth.jwt_jaas.rest.RestEndPointServer._
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.RestAssured.given
+import io.restassured.http.ContentType
 import org.hamcrest.Matchers.equalTo
 import org.scalatest.{FlatSpec, Matchers}
+import spray.json._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-
-import RestEndPointServer._
 
 class ApiGatewaySpec
   extends FlatSpec
   with Matchers
   with LazyLogging {
 
-  def microservice(path1: String): Future[Http.ServerBinding] = {
+  import JsonSupport._
+
+  def microservice(p: String): Future[Http.ServerBinding] = {
     val route =
-      path(path1) {
-        get {
-          logger.info(s"call to ${path1}")
-          complete(HttpEntity(ContentTypes.`application/json`, s"""{"path": "${path1}"}"""))
+      get {
+        path(p) {
+          logger.info(s"get call to ${p}")
+          complete(HttpEntity(ContentTypes.`application/json`, s"""{"path": "${p}"}"""))
+        }
+      } ~ post {
+        path(p) {
+          entity(as[JsValue]) { v =>
+            logger.info(s"get call to ${p}")
+            complete(HttpEntity(ContentTypes.`application/json`, s"""{"body": ${v}}"""))
+          }
         }
       }
 
@@ -56,16 +66,28 @@ class ApiGatewaySpec
     binder.bind("goodbye", binding2)
 
     try {
-      given().log().all().
+      given().log().all().contentType(ContentType.JSON).
         get(endPointUrl(binding, "hello")).
         then().log().body(true).
         statusCode(200).
         body("path",equalTo("hello"));
-      given().log().all().
+      given().log().all().contentType(ContentType.JSON).
         get(endPointUrl(binding, "goodbye")).
         then().log().body(true).
         statusCode(200).
         body("path",equalTo("goodbye"));
+      given().log().all().contentType(ContentType.JSON).
+        body("""{"a":1, "b":2}""").
+        post(endPointUrl(binding, "hello")).
+        then().log().body(true).
+        statusCode(200).
+        body("body.b",equalTo(2));
+      given().log().all().contentType(ContentType.JSON).
+        body("""{"c":3, "d":4}""").
+        post(endPointUrl(binding, "goodbye")).
+        then().log().body(true).
+        statusCode(200).
+        body( "body.d",equalTo(4));
     } finally {
       apiGateway.stop(fBinding)
     }
