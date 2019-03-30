@@ -64,7 +64,17 @@ val restLibraryDependencies = commonJavaDeps ++ commonScalaDeps ++ Seq(akkaHttp,
 lazy val rest = (project in file("rest"))
   .settings(
     libraryDependencies ++= restLibraryDependencies
-  ).dependsOn(jwt, common)
+  ).dependsOn(jwt, common % "compile->compile;test->test")
+
+val apiGatewayLibraryDependencies = commonScalaDeps ++ Seq(akkaHttp,
+  akkaStream,
+  restAssurred,
+  hamcrest)
+
+lazy val apiGateway = (project in file("apiGateway"))
+  .settings(
+    libraryDependencies ++= apiGatewayLibraryDependencies
+  ).dependsOn(rest)
 
 val kafkaLibraryDependencies = commonScalaDeps ++ Seq(akkaHttp,
   akkaStream,
@@ -79,9 +89,10 @@ val kafkaLibraryDependencies = commonScalaDeps ++ Seq(akkaHttp,
 lazy val kafka = (project in file("kafka"))
   .settings(
     libraryDependencies ++= kafkaLibraryDependencies
-  ).dependsOn(common, jwt)
+  ).dependsOn(common % "compile->compile;test->test", jwt)
 
 val commonLibraryDependencies = commonScalaDeps ++ Seq(akkaHttp,
+  akkaStream,
   logback
 )
 
@@ -93,7 +104,9 @@ lazy val common = (project in file("common"))
 val authznLibraryDependencies = commonJavaDeps //++ Seq(logback)
 
 lazy val authzn = (project in file("authzn"))
+  .enablePlugins(TestNGPlugin)
   .settings(
+    testNGVersion := "6.14.3",
     libraryDependencies ++= authznLibraryDependencies
   )
 
@@ -110,7 +123,7 @@ lazy val root = (project in file("."))
                         ++ restLibraryDependencies
                         ++ jwtLibraryDependencies
                         ++ kafkaLibraryDependencies
-  ).dependsOn(rest, jwt, kafka, common, authzn, authznScala)
+  ).dependsOn(rest % "compile->compile;test->test", jwt, kafka, common % "compile->compile;test->test", authzn, authznScala, apiGateway)
 
 
 

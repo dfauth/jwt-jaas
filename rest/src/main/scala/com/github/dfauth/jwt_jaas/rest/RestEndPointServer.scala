@@ -10,12 +10,16 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.Future
 
 object RestEndPointServer {
+
+  implicit val system = ActorSystem("my-system")
+  implicit val materializer = ActorMaterializer()
+  // needed for the future flatMap/onComplete in the end
+  implicit val executionContext = system.dispatcher
+
+  def endPointUrl(binding:ServerBinding, str: String):String = s"http://${binding.localAddress.getHostName}:${binding.localAddress.getPort}/${str}"
 }
 
 case class RestEndPointServer(route:Route, hostname:String = "localhost", port:Int = 8080) extends LazyLogging {
-
-  def endPointUrl(binding:ServerBinding, str: String):String = s"http://${binding.localAddress.getHostName}:${binding.localAddress.getPort}/${str}"
-
 
   implicit val system = ActorSystem("my-system")
   implicit val materializer = ActorMaterializer()

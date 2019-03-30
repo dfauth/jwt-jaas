@@ -7,10 +7,11 @@ import akka.Done
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation._
-import com.github.dfauth.jwt_jaas.ContextualPipeline.{adaptFuture, adaptFutureWithContext, wrap}
+import com.github.dfauth.jwt_jaas.common.ContextualPipeline.{adaptFuture, adaptFutureWithContext, wrap}
 import com.github.dfauth.jwt_jaas.jwt._
 import com.github.dfauth.jwt_jaas.kafka.JsonSupport._
 import com.github.dfauth.jwt_jaas.kafka._
+import com.github.dfauth.jwt_jaas.rest.RestEndPointServer._
 import com.github.dfauth.jwt_jaas.rest.Routes._
 import com.github.dfauth.jwt_jaas.rest.TestUtils._
 import com.github.dfauth.jwt_jaas.rest.{RestEndPointServer, Tokens}
@@ -22,10 +23,8 @@ import org.hamcrest.Matchers._
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json._
 
-import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.util.{Success, Try}
 
 
 class TestSpec
@@ -45,12 +44,12 @@ class TestSpec
     import JsonSupport._
 
       // REST setup
-    val routes:Route = login(authenticateFred) ~ genericPostFutureEndpoint(composeWithFuture)(payloadFormat, doneFormat)
+    val routes:Route = login(authenticateFred) ~ genericPostFutureEndpoint(composeWithFuture)(payloadFormat, resultFormat)
 
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
     val binding = Await.result(bindingFuture, 5.seconds)
-    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
+    implicit val loginEndpoint:String = endPointUrl(binding, "login")
 
     try {
 
@@ -89,7 +88,7 @@ class TestSpec
         val response:Response = tokens.when.log().all().
           contentType(ContentType.JSON).
           body(bodyContent).
-          post(endPoint.endPointUrl(binding, "endpoint"))
+          post(endPointUrl(binding, "endpoint"))
 
         response.then().log.all.statusCode(200).
           body("result",equalTo( (userFactorCache.cache(userId)*1000).toInt*payload.toInt))
@@ -116,21 +115,21 @@ class TestSpec
       apply(user)
   }
 
-//  def composeWithFuture: UserCtx => Payload[String] => Future[Result[Int]] = {
-  def composeWithFuture: UserCtx => Payload[String] => Future[Done] = {
-    user => p => {
-      val usrCtx = UserContext(user.getToken,Payload("testMessage"))
-      producer.send(usrCtx).onComplete(logSuccess)
-    }.apply(user)
+//  def composeWithFuture: UserCtx => Payload[String] => Future[Done] = {
+//    user => p => {
+//      val usrCtx = UserContext(user.getToken,Payload("testMessage"))
+//      producer.send(usrCtx).onComplete(logSuccess)
+//    }.apply(user)
 
-//    user => wrap(extractPayload).
-//      map[Int](toInt).
-//      map(toFuture).
-//      mapWithContext(adaptFutureWithContext(lookup(userFactorCache.cache))).
-//      map(adaptFuture(doubleToInt)).
-//      map(adaptFuture(toResult)).
-//      apply(user)
-  }
+  def composeWithFuture: UserCtx => Payload[String] => Future[Result[Int]] = {
+      user => wrap(extractPayload).
+      map[Int](toInt).
+      map(toFuture).
+      mapWithContext(adaptFutureWithContext(lookup(userFactorCache.cache))).
+      map(adaptFuture(doubleToInt)).
+      map(adaptFuture(toResult)).
+      apply(user)
+   }
 
   val extractPayload:Payload[String] => String  = { p =>
     logger.info(s"extractPayload: ${p}")

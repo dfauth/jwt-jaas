@@ -1,0 +1,11 @@
+name: authzn
+
+tests:
+  - name: fred
+    parameters: { }
+    excludedGroups: [ ]
+    classes:
+      - com.github.dfauth.jwt_jaas.authzn.ActionsTest
+      - com.github.dfauth.jwt_jaas.authzn.AuthorizationDecisionTest
+      - com.github.dfauth.jwt_jaas.authzn.PermissionTest
+      - com.github.dfauth.jwt_jaas.authzn.ResourceHierarchyTest

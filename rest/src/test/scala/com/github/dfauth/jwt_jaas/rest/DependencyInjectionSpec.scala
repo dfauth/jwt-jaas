@@ -1,7 +1,7 @@
 package com.github.dfauth.jwt_jaas.rest
 
 import akka.http.scaladsl.server.Route
-import com.github.dfauth.jwt_jaas.ContextualPipeline._
+import com.github.dfauth.jwt_jaas.common.ContextualPipeline._
 import com.github.dfauth.jwt_jaas.jwt.UserCtx
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.http.ContentType
@@ -12,6 +12,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import RestEndPointServer._
 
 class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
@@ -32,7 +33,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
     val binding = Await.result(bindingFuture, 5.seconds)
-    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
+    implicit val loginEndpoint:String = endPointUrl(binding, "login")
 
     try {
       val userId:String = "fred"
@@ -44,7 +45,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
 
       val response:Response = tokens.when.log().all().
         contentType(ContentType.JSON).
-        get(endPoint.endPointUrl(binding, "endpoint/{payload}"), payload)
+        get(endPointUrl(binding, "endpoint/{payload}"), payload)
 
       response.then().log.all.statusCode(200).
         body("result",equalTo(payload.toInt))
@@ -68,7 +69,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
     val binding = Await.result(bindingFuture, 5.seconds)
-    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
+    implicit val loginEndpoint:String = endPointUrl(binding, "login")
 
     try {
       val userId:String = "fred"
@@ -81,7 +82,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
       val response:Response = tokens.when.log().all().
         contentType(ContentType.JSON).
         body(bodyContent).
-        post(endPoint.endPointUrl(binding, "endpoint"))
+        post(endPointUrl(binding, "endpoint"))
 
       response.then().statusCode(200).
         body("result",equalTo(payload.toInt))
@@ -105,7 +106,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     val bindingFuture = endPoint.start()
 
     val binding = Await.result(bindingFuture, 5.seconds)
-    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
+    implicit val loginEndpoint:String = endPointUrl(binding, "login")
 
     try {
       val userId:String = "fred"
@@ -118,7 +119,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
       val response:Response = tokens.when.log().all().
         contentType(ContentType.JSON).
         body(bodyContent).
-        post(endPoint.endPointUrl(binding, "endpoint"))
+        post(endPointUrl(binding, "endpoint"))
 
       response.then().log.all.statusCode(200).
         body("result",equalTo( (cache(userId)*1000).toInt*payload.toInt))
@@ -134,7 +135,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
       val response:Response = tokens.when.log().all().
         contentType(ContentType.JSON).
         body(bodyContent).
-        post(endPoint.endPointUrl(binding, "endpoint"))
+        post(endPointUrl(binding, "endpoint"))
 
       response.then().log.all.statusCode(200).
         body("result",equalTo(1000*payload.toInt))
@@ -156,7 +157,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
     val binding = Await.result(bindingFuture, 5.seconds)
-    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
+    implicit val loginEndpoint:String = endPointUrl(binding, "login")
 
     try {
       val userId:String = "fred"
@@ -169,7 +170,7 @@ class DependencyInjectionSpec extends FlatSpec with Matchers with LazyLogging {
       val response:Response = tokens.when.log().all().
         contentType(ContentType.JSON).
         body(bodyContent).
-        post(endPoint.endPointUrl(binding, "endpoint"))
+        post(endPointUrl(binding, "endpoint"))
 
       response.then().log.all.statusCode(200).
         body("result",equalTo( (userFactorCache.cache(userId)*1000).toInt*payload.toInt))

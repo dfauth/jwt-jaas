@@ -12,6 +12,7 @@ import spray.json._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import RestEndPointServer._
 
 class DISpec extends FlatSpec with Matchers with LazyLogging {
 
@@ -28,7 +29,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
     val binding = Await.result(bindingFuture, 5.seconds)
-    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
+    implicit val loginEndpoint:String = RestEndPointServer.endPointUrl(binding, "login")
 
     try {
       val userId:String = "fred"
@@ -36,7 +37,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
       val tokens:Tokens = asUser(userId).withPassword(password).login
       tokens.
         when().log().headers().
-        get(endPoint.endPointUrl(binding, "endpoint")).
+        get(endPointUrl(binding, "endpoint")).
         then().
         statusCode(200).
         body("result",equalTo(s"${userId}"))
@@ -58,7 +59,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
     val endPoint = RestEndPointServer(routes, port = 0)
     val bindingFuture = endPoint.start()
     val binding = Await.result(bindingFuture, 5.seconds)
-    implicit val loginEndpoint:String = endPoint.endPointUrl(binding, "login")
+    implicit val loginEndpoint:String = endPointUrl(binding, "login")
 
     try {
       val userId:String = "fred"
@@ -71,7 +72,7 @@ class DISpec extends FlatSpec with Matchers with LazyLogging {
       val response:Response = tokens.when.log().all().
         contentType(ContentType.JSON).
         body(bodyContent).
-        post(endPoint.endPointUrl(binding, "endpoint"))
+        post(endPointUrl(binding, "endpoint"))
 
       response.then().statusCode(200).
         body("result",equalTo(s"${payload} customised for ${userId}"))

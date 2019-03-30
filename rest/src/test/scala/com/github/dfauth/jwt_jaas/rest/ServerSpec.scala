@@ -16,6 +16,7 @@ import spray.json._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import RestEndPointServer._
 
 class ServerSpec extends FlatSpec with Matchers with LazyLogging {
 
@@ -39,7 +40,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
 
     try {
       when().
-        get(endPoint.endPointUrl(binding, "hello")).
+        get(endPointUrl(binding, "hello")).
         then().
         statusCode(200).
         body("say",equalTo("hello"));
@@ -68,7 +69,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       val name = "fred"
       given().contentType(ContentType.JSON).
         body(Payload(name).toJson.prettyPrint).log().body(true).
-        post(endPoint.endPointUrl(binding, "hello")).
+        post(endPointUrl(binding, "hello")).
         then().log().body(true).
         statusCode(200).
         body("say",equalTo(s"hello to ${name}"));
@@ -100,7 +101,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       val name = "fred"
       given().contentType(ContentType.JSON).
         body(Payload(name).toJson.prettyPrint).log().body(true).
-        post(endPoint.endPointUrl(binding, "hello")).
+        post(endPointUrl(binding, "hello")).
         then().log().body(true).
         statusCode(200).
         body("result",equalTo(s"say hello to ${name} from a component"));
@@ -131,7 +132,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       val token = jwtBuilder.forSubject(user.getUserId).withClaim("roles", user.getRoles).withExpiry(ZonedDateTime.now().plusMinutes(20)).build()
       given().header("Authorization", "Bearer "+token).
         when().log().headers().
-        get(endPoint.endPointUrl(binding, "hello")).
+        get(endPointUrl(binding, "hello")).
         then().
         statusCode(200).
         body("say",equalTo(s"hello to authenticated ${userId}"))
@@ -167,7 +168,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       })
       given().header("Authorization", "Bearer "+token1).
         when().log().headers().
-        get(endPoint.endPointUrl(binding, "hello")).
+        get(endPointUrl(binding, "hello")).
         then().
         statusCode(401)
     } finally {
@@ -194,7 +195,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       val response = given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl(binding, "login"))
+        post(endPointUrl(binding, "login"))
         response.then().statusCode(200)
       val authorizationToken = response.body.path[String]("authorizationToken")
       logger.info(s"authorizationToken: ${authorizationToken}")
@@ -227,7 +228,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl(binding, "login")).
+        post(endPointUrl(binding, "login")).
         then().
         statusCode(401)
     } finally {
@@ -254,7 +255,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl(binding, "login")).
+        post(endPointUrl(binding, "login")).
         then().
         statusCode(401)
     } finally {
@@ -281,7 +282,7 @@ class ServerSpec extends FlatSpec with Matchers with LazyLogging {
       given().
         when().log().body().contentType(ContentType.JSON).
         body(Credentials(userId, password).toJson.prettyPrint).
-        post(endPoint.endPointUrl(binding, "login")).
+        post(endPointUrl(binding, "login")).
         then().
         statusCode(401)
     } finally {
