@@ -31,27 +31,29 @@ object ApiGateway extends LazyLogging {
 
   @volatile var state = Map.empty[String, Route]
 
+  def bind(b: Binding) = {
+    val newRoute: Route = {
+      val url = b.getURL()
+      val flow = Http().outgoingConnection(url.getHost, url.getPort)
+      path(b.path) {
+        get {
+          extract(_.request) { req ⇒
+            val futureResponse = Source.single(req).via(flow).runWith(Sink.head)
+            complete(futureResponse)
+          }
+        }
+      }
+    }
+
+    state = state ++ Map(b.path -> newRoute)
+  }
+
   import JsonSupport._
 
   val bindRoute =
     path("bind") {
       post {
-        entity(as[Binding]) { b =>
-
-          val newRoute:Route = {
-            val url = b.getURL()
-            val flow = Http().outgoingConnection(url.getHost, url.getPort)
-            path(b.path) {
-              get {
-                extract(_.request) { req ⇒
-                  val futureResponse = Source.single(req).via(flow).runWith(Sink.head)
-                  complete(futureResponse)
-                }
-              }
-            }
-          }
-
-          state = state ++ Map(b.path -> newRoute)
+        entity(as[Binding]) { b => bind(b)
           complete(HttpEntity(ContentTypes.`application/json`, """{"bind":"ok"}"""))
         }
       }
@@ -80,6 +82,8 @@ object ApiGateway extends LazyLogging {
 
 
 class ApiGateway(host:String = "localhost", port:Int = 8080) extends RestEndPointServer(ApiGateway.routes, host, port) {
+
+  def bind(b: Binding) = ApiGateway.bind(b)
 
 }
 

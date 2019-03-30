@@ -34,8 +34,8 @@ class ApiGatewaySpec
   "an api gateway" should "act as a reverse proxy" in {
 
     // start the discovery service
-    val discovery = new ApiGateway()
-    val fBinding = discovery.start()
+    val apiGateway = new ApiGateway()
+    val fBinding = apiGateway.start()
     // wait for startup
     val binding:Http.ServerBinding = Await.result(fBinding, 1.seconds)
     // get its local binder
@@ -45,14 +45,14 @@ class ApiGatewaySpec
     // and wait for startup
     val binding1 = Await.result(microservice("hello"), 1.seconds)
 
-    // bind it to the discovery service
-    binder.bind("hello", binding1)
+    // bind it to the local discovery service
+    apiGateway.bind(Binding("hello", endPointUrl(binding1, "hello")))
 
     // start a simple microservice on a random port
     // and wait for startup
     val binding2 = Await.result(microservice("goodbye"), 1.seconds)
 
-    // bind it to the discovery service
+    // remote bind to the discovery service
     binder.bind("goodbye", binding2)
 
     try {
@@ -67,7 +67,7 @@ class ApiGatewaySpec
         statusCode(200).
         body("path",equalTo("goodbye"));
     } finally {
-      discovery.stop(fBinding)
+      apiGateway.stop(fBinding)
     }
 
   }
