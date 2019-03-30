@@ -24,15 +24,7 @@ class ApiGatewaySpec
       path(path1) {
         get {
           logger.info(s"call to ${path1}")
-          complete(HttpEntity(ContentTypes.`application/json`, s"""{"path": "${path1}"}""")) // {"path": "${path1}"}
-        }
-      }
-
-    val dummyRoute =
-      path("dummy") {
-        get {
-          logger.info(s"call to dummy")
-          complete(HttpEntity(ContentTypes.`application/json`, s"""{"path": "dummy"}""")) // {"path": "${path1}"}
+          complete(HttpEntity(ContentTypes.`application/json`, s"""{"path": "${path1}"}"""))
         }
       }
 
@@ -64,10 +56,16 @@ class ApiGatewaySpec
     binder.bind("goodbye", binding2)
 
     try {
-      given().log().all().get(endPointUrl(binding, "hello")).
+      given().log().all().
+        get(endPointUrl(binding, "hello")).
         then().log().body(true).
         statusCode(200).
-        body("route",equalTo("hello"));
+        body("path",equalTo("hello"));
+      given().log().all().
+        get(endPointUrl(binding, "goodbye")).
+        then().log().body(true).
+        statusCode(200).
+        body("path",equalTo("goodbye"));
     } finally {
       discovery.stop(fBinding)
     }

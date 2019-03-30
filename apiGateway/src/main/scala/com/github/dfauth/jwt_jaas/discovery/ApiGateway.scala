@@ -1,11 +1,16 @@
 package com.github.dfauth.jwt_jaas.discovery
 
+import java.net.URL
+
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.{as, complete, entity, get, path, post}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, extract, get, path, post}
 import akka.http.scaladsl.server.RouteConcatenation._
 import akka.http.scaladsl.server.{Route, RouteResult}
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Sink, Source}
 import com.github.dfauth.jwt_jaas.rest.RestEndPointServer
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.RestAssured.given
@@ -13,7 +18,6 @@ import io.restassured.http.ContentType
 import org.hamcrest.Matchers.equalTo
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 
 object ApiGateway extends LazyLogging {
@@ -22,10 +26,9 @@ object ApiGateway extends LazyLogging {
     Binder(RestEndPointServer.endPointUrl(binding, "bind"))
   }
 
-  implicit val materializer1 = RestEndPointServer.materializer
-  implicit val system1 = RestEndPointServer.system
+  implicit val system = ActorSystem("apiGateway")
+  implicit val materializer = ActorMaterializer()
 
-  val buffer:ListBuffer[(String,Route)] = ListBuffer()
   @volatile var state = Map.empty[String, Route]
 
   import JsonSupport._
@@ -35,15 +38,19 @@ object ApiGateway extends LazyLogging {
       post {
         entity(as[Binding]) { b =>
 
-          val newRoute = path(b.path) {
-            get {
-              post {
-                complete(HttpEntity(ContentTypes.`application/json`, """{"say":"new route"}"""))
+          val newRoute:Route = {
+            val url = b.getURL()
+            val flow = Http().outgoingConnection(url.getHost, url.getPort)
+            path(b.path) {
+              get {
+                extract(_.request) { req ⇒
+                  val futureResponse = Source.single(req).via(flow).runWith(Sink.head)
+                  complete(futureResponse)
+                }
               }
             }
           }
 
-          buffer.append((b.path, newRoute))
           state = state ++ Map(b.path -> newRoute)
           complete(HttpEntity(ContentTypes.`application/json`, """{"bind":"ok"}"""))
         }
@@ -61,10 +68,8 @@ object ApiGateway extends LazyLogging {
   val defaultRoute: Route = ctx => Future.successful[RouteResult.Complete](RouteResult.Complete(HttpResponse(StatusCodes.NotFound)))
 
   val dynamicRoutes: Route = ctx => {
-    val routes = state.map { case (segment, route) =>
-      get {
-        complete(HttpEntity(ContentTypes.`application/json`, s"""{"route":"${segment}"}"""))
-      }
+    val routes = state.map {
+      case (segment, route) => route
     }
     concat(routes.toList: _*)(ctx)
   }
@@ -78,7 +83,9 @@ class ApiGateway(host:String = "localhost", port:Int = 8080) extends RestEndPoin
 
 }
 
-case class Binding(path:String, url:String)
+case class Binding(path:String, url:String) {
+  def getURL() = new URL(url)
+}
 
 object JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit def bindingFormat:RootJsonFormat[Binding] = jsonFormat2(Binding)
