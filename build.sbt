@@ -123,7 +123,7 @@ lazy val root = (project in file("."))
                         ++ restLibraryDependencies
                         ++ jwtLibraryDependencies
                         ++ kafkaLibraryDependencies
-  ).dependsOn(rest % "compile->compile;test->test", jwt, kafka, common % "compile->compile;test->test", authzn, authznScala, apiGateway)
+  ).dependsOn(rest % "compile->compile;test->test", jwt, kafka % "compile->compile;test->test", common % "compile->compile;test->test", authzn, authznScala, apiGateway)
 
 
 
