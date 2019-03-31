@@ -26,8 +26,8 @@ class FactorialSpec extends FlatSpec
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
 
         val microservice = MicroserviceFactory[Int, Int](
-          new CorrelationSerializer[Int](d => d.toJson),
-          new CorrelationDeserializer[Int](o => o.convertTo[CorrelatableContainer[Int]]),
+          d => d.toJson,
+          o => o.convertTo[Int],
           (zookeeperConnectString, brokerList),
           config.customConsumerProperties, config.customProducerProperties)
 
@@ -35,8 +35,8 @@ class FactorialSpec extends FlatSpec
 
         val f:Int => Future[Int] =
           MicroserviceFactory.createMicroserviceStub[Int, Int]("factorial",
-          new CorrelationDeserializer[Int](o => o.convertTo[CorrelatableContainer[Int]]),
-          new CorrelationSerializer[Int](d => d.toJson),
+          o => o.convertTo[Int],
+          d => d.toJson,
           (zookeeperConnectString, brokerList),
           config.customProducerProperties, config.customProducerProperties)
 

@@ -3,29 +3,35 @@ package com.github.dfauth.jws_jaas
 import java.util.UUID
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import com.github.dfauth.jwt_jaas.kafka._
-import spray.json.{DefaultJsonProtocol, JsValue, JsonFormat, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, JsObject, JsString, JsValue, JsonFormat, RootJsonFormat}
 
-trait Correlatable[T] {
-  val correlationId:String
-  val payload:T
-}
-
-case class CorrelatableContainer[T](
-                                  override val correlationId: String = UUID.randomUUID().toString,
-                                  override val payload: T
-                                ) extends Correlatable[T]
+case class Correlatable[T](correlationId: String = UUID.randomUUID().toString,
+                           payload: T)
 
 object Correlatable {
-  def apply[T](t:T):CorrelatableContainer[T] = CorrelatableContainer[T](payload = t)
-  def apply[T](correlationId:String, t:T):CorrelatableContainer[T] = CorrelatableContainer[T](correlationId, t)
+  def apply[T](t:T):Correlatable[T] = Correlatable[T](UUID.randomUUID().toString, t)
 }
 
-class CorrelationSerializer[T](f:CorrelatableContainer[T] => JsValue) extends JsValueSerializer[CorrelatableContainer[T]](f)
-
-class CorrelationDeserializer[T](f:JsValue => CorrelatableContainer[T]) extends JsValueDeserializer[CorrelatableContainer[T]](f)
-
 object JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-  implicit def correlatableFormat[T:JsonFormat]:RootJsonFormat[CorrelatableContainer[T]] = jsonFormat2(CorrelatableContainer.apply[T])
+  implicit def correlatableFormat[T:JsonFormat](formatT:T => JsValue, parseT:JsValue => T):RootJsonFormat[Correlatable[T]] = new RootJsonFormat[Correlatable[T]] {
+    def write(correlatable: Correlatable[T]) = format[T](formatT)(correlatable)
+    def read(value: JsValue):Correlatable[T] = parse[T](parseT)(value)
+  }
+
+  def parse[T](f:JsValue => T):JsValue => Correlatable[T] = jsValue => jsValue match {
+    case j:JsObject => {
+      val id:String = j.getFields("correlationId").map {
+        case JsString(s) => s
+      }.head
+      val payload:T = j.getFields("payload").map(f(_)).head
+      new Correlatable[T](id, payload)
+    }
+    case _ => throw new RuntimeException("Oops")
+  }
+  def format[T](f:T => JsValue):Correlatable[T] => JsValue = correlatable => JsObject(Map[String, JsValue](
+    "correlationId" -> JsString(correlatable.correlationId),
+    "payload" -> f(correlatable.payload)
+  ))
+
 }
 

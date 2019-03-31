@@ -5,7 +5,7 @@ import java.util
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 import spray.json.{JsValue, JsonParser}
 
-abstract class JsValueSerializer[T](f:T => JsValue) extends Serializer[T] {
+class JsValueSerializer[T](f:T => JsValue) extends Serializer[T] {
 
   override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
 
@@ -16,7 +16,7 @@ abstract class JsValueSerializer[T](f:T => JsValue) extends Serializer[T] {
   }
 }
 
-abstract class JsValueDeserializer[T](f:JsValue => T) extends Deserializer[T] {
+class JsValueDeserializer[T](f:JsValue => T) extends Deserializer[T] {
   override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
 
   override def close(): Unit = {}
