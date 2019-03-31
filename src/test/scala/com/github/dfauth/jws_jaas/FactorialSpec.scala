@@ -25,13 +25,13 @@ class FactorialSpec extends FlatSpec
       withRunningKafkaOnFoundPort(EmbeddedKafkaConfig(kafkaPort = 9092, zooKeeperPort = 2181)) { implicit config =>
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
 
-        val microservice = MicroserviceFactory[Int, Int]("factorial",
+        val microservice = MicroserviceFactory[Int, Int](
           new CorrelationSerializer[Int](d => d.toJson),
           new CorrelationDeserializer[Int](o => o.convertTo[CorrelatableContainer[Int]]),
           (zookeeperConnectString, brokerList),
           config.customConsumerProperties, config.customProducerProperties)
 
-        val endpoint = microservice.createMicroserviceEndpoint((p:Int) => factorial(p))
+        val endpoint = microservice.createMicroserviceEndpoint("factorial", (p:Int) => factorial(p))
 
         val f:Int => Future[Int] =
           MicroserviceFactory.createMicroserviceStub[Int, Int]("factorial",

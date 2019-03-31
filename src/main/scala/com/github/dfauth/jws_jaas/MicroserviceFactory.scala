@@ -63,8 +63,7 @@ object MicroserviceFactory extends LazyLogging {
 
 }
 
-case class MicroserviceFactory[A,B](topicPrefix: String,
-                                    serializer:Serializer[CorrelatableContainer[B]],
+case class MicroserviceFactory[A,B](serializer:Serializer[CorrelatableContainer[B]],
                                     deserializer:Deserializer[CorrelatableContainer[A]],
                                     connectionProperties: (String, String),
                                     consumerProperties:Map[String, String],
@@ -73,10 +72,10 @@ case class MicroserviceFactory[A,B](topicPrefix: String,
 
   val (zookeeperConnectString, brokerList) = connectionProperties
 
-  val inboundTopic = MicroserviceFactory.inboundTopicName(topicPrefix)
-  val outboundTopic = MicroserviceFactory.outboundTopicName(topicPrefix)
+  def createMicroserviceEndpoint(topicPrefix: String, f: A => B) = {
 
-  def createMicroserviceEndpoint(f: A => B) = {
+    val inboundTopic = MicroserviceFactory.inboundTopicName(topicPrefix)
+    val outboundTopic = MicroserviceFactory.outboundTopicName(topicPrefix)
 
     val producer = KafkaProducerWrapper[CorrelatableContainer[B]](outboundTopic,
       serializer,
