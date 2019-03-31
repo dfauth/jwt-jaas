@@ -61,6 +61,42 @@ class FactorialSpec
     (inboundTopic, outboundTopic)
   }
 
+  def createKafkaBackedFunction[A, B](topicPrefix: String, deserializer:Deserializer[B], serializer:Serializer[A], connectionProperties: (String, String), config:EmbeddedKafkaConfig): A => Future[B] = {
+
+    val inboundTopic = s"${topicPrefix}.in"
+    val outboundTopic = s"${topicPrefix}.out"
+
+    val (zookeeperConnectString, brokerList) = connectionProperties
+
+    val producer = KafkaProducerWrapper[A](inboundTopic,
+      serializer,
+      brokerList = brokerList,
+      zookeeperConnect = zookeeperConnectString,
+      props = config.customProducerProperties
+    )
+
+    val consumer = new KafkaConsumerWrapper[B](outboundTopic,
+      deserializer,
+      brokerList = brokerList,
+      zookeeperConnect = zookeeperConnectString,
+      props = config.customConsumerProperties
+    )
+
+    val p = Promise[B]()
+    val f = (a:A) => {
+      producer.send(a).onComplete(logSuccess)
+      p.future
+    }
+
+    consumer.subscribe(b => {
+      p.success(b)
+      Future {
+        true
+      }
+    })
+    f
+  }
+
   "set up a kafka front end to a function" should "be possible" in {
 
 
@@ -78,32 +114,16 @@ class FactorialSpec
           (zookeeperConnectString, brokerList),
           config)
 
-        val producer = KafkaProducerWrapper[Payload[Int]](inboundTopic,
-          new PayloadSerializer[Int](d => d.toJson),
-          brokerList = brokerList,
-          zookeeperConnect = zookeeperConnectString,
-          props = config.customProducerProperties
-        )
-
-        val consumer = new KafkaConsumerWrapper[Result[Int]](outboundTopic,
+        val f = createKafkaBackedFunction[Payload[Int], Result[Int]]("factorial",
           new ResultDeserializer[Int](o => o.convertTo[Result[Int]]),
-          brokerList = brokerList,
-          zookeeperConnect = zookeeperConnectString,
-          props = config.customConsumerProperties
-        )
+          new PayloadSerializer[Int](d => d.toJson),
+          (zookeeperConnectString, brokerList),
+          config)
 
-        val p = Promise[Int]()
-        consumer.subscribe(r => {
-          logger.info(s"result: ${r.result}")
-          p.success(r.result)
-          Future {
-            true
-          }
-        })
         val payload = Payload(3)
-        producer.send(payload).onComplete(logSuccess)
+        val p:Future[Result[Int]] = f(payload)
 
-        Await.result[Int](p.future, 5.seconds) should be (6)
+        Await.result[Result[Int]](p, 5.seconds).result should be (6)
       }
     } catch {
       case e:RuntimeException => {
