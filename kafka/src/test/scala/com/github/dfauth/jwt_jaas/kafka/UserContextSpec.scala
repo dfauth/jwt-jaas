@@ -221,6 +221,8 @@ class PayloadDeserializer[T](f:JsValue => Payload[T]) extends JsValueDeserialize
 
 case class UserContextDeserializer[T](f:JsValue => UserContext[T]) extends JsValueDeserializer[UserContext[T]](f)
 
+case class ResultDeserializer[T](f:JsValue => Result[T]) extends JsValueDeserializer[Result[T]](f)
+
 abstract class JsValueDeserializer[T](f:JsValue => T) extends Deserializer[T] {
   override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
 
@@ -235,4 +237,6 @@ abstract class JsValueDeserializer[T](f:JsValue => T) extends Deserializer[T] {
 case class UserContextSerializer[T](f:UserContext[T] => JsValue) extends JsValueSerializer[UserContext[T]](f)
 
 case class PayloadSerializer[T](f:Payload[T] => JsValue) extends JsValueSerializer[Payload[T]](f)
+
+case class ResultSerializer[T](f:Result[T] => JsValue) extends JsValueSerializer[Result[T]](f)
 
