@@ -27,4 +27,21 @@ class JsValueDeserializer[T](f:JsValue => T) extends Deserializer[T] {
   }
 }
 
+class FunctionSerializer[T](f:T => Array[Byte]) extends Serializer[T] {
+
+  override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
+
+  override def close(): Unit = {}
+
+  override def serialize(topic: String, data: T): Array[Byte] = f(data)
+}
+
+class FunctionDeserializer[T](f:Array[Byte] => T) extends Deserializer[T] {
+  override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
+
+  override def close(): Unit = {}
+
+  override def deserialize(topic: String, data: Array[Byte]): T = f(data)
+}
+
 

@@ -5,11 +5,18 @@ import java.util.UUID
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json.{DefaultJsonProtocol, JsObject, JsString, JsValue, JsonFormat, RootJsonFormat}
 
-case class Correlatable[T](correlationId: String = UUID.randomUUID().toString,
-                           payload: T)
+trait Correlatable[T] {
+  val correlationId: String
+  val payload:T
+}
+
+case class CorrelationEnvelope[T](
+                           correlationId: String = UUID.randomUUID().toString,
+                           payload: T
+                                 ) extends Correlatable[T]
 
 object Correlatable {
-  def apply[T](t:T):Correlatable[T] = Correlatable[T](UUID.randomUUID().toString, t)
+  def apply[T](t:T):Correlatable[T] = CorrelationEnvelope[T](UUID.randomUUID().toString, t)
 }
 
 object JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
@@ -24,7 +31,7 @@ object JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
         case JsString(s) => s
       }.head
       val payload:T = j.getFields("payload").map(f(_)).head
-      new Correlatable[T](id, payload)
+      new CorrelationEnvelope[T](id, payload)
     }
     case _ => throw new RuntimeException("Oops")
   }

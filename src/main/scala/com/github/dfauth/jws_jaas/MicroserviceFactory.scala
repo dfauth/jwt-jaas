@@ -1,6 +1,6 @@
 package com.github.dfauth.jws_jaas
 
-import com.github.dfauth.jwt_jaas.kafka.{JsValueDeserializer, JsValueSerializer, KafkaConsumerWrapper, KafkaProducerWrapper}
+import com.github.dfauth.jwt_jaas.kafka._
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 import spray.json.JsValue
@@ -61,7 +61,13 @@ object MicroserviceFactory extends LazyLogging {
         true
       }
     })
-    (a:A) => f(Correlatable[A](a)).map(_.payload)
+    (a:A) => {
+      val f1:Future[Correlatable[B]] = a match {
+        case c:Correlatable[A] => f(c)
+        case x => f(CorrelationEnvelope[A](payload = a))
+      }
+      f1.map(_.payload)
+    }
   }
 
   import com.github.dfauth.jws_jaas.JsonSupport._
@@ -77,36 +83,37 @@ object MicroserviceFactory extends LazyLogging {
 
 }
 
-case class MicroserviceFactory[A,B](serializer:B => JsValue,
-                                    deserializer:JsValue => A,
-                                    connectionProperties: (String, String),
+case class MicroserviceFactory(connectionProperties: (String, String),
                                     consumerProperties:Map[String, String],
                                     producerProperties:Map[String, String]
                                    ) extends LazyLogging {
 
   val (zookeeperConnectString, brokerList) = connectionProperties
 
-  def createMicroserviceEndpoint(topicPrefix: String, f: A => B) = {
+  def createMicroserviceEndpoint[A,B](topicPrefix: String,
+                                 f: A => B,
+                                 serializer:Correlatable[B] => Array[Byte],
+                                 deserializer:Array[Byte] => Correlatable[A]) = {
 
     val inboundTopic = MicroserviceFactory.inboundTopicName(topicPrefix)
     val outboundTopic = MicroserviceFactory.outboundTopicName(topicPrefix)
 
     val producer = KafkaProducerWrapper[Correlatable[B]](outboundTopic,
-      new JsValueSerializer[Correlatable[B]](MicroserviceFactory.formatJsValue(serializer)),
+      new FunctionSerializer[Correlatable[B]](serializer),
       brokerList = brokerList,
       zookeeperConnect = zookeeperConnectString,
       props = producerProperties
     )
 
     val consumer = new KafkaConsumerWrapper[Correlatable[A]](inboundTopic,
-      new JsValueDeserializer[Correlatable[A]](MicroserviceFactory.parseJsValue(deserializer)),
+      new FunctionDeserializer[Correlatable[A]](deserializer),
       brokerList = brokerList,
       zookeeperConnect = zookeeperConnectString,
       props = consumerProperties
     )
 
     consumer.subscribe((a:Correlatable[A]) => {
-      val b = Correlatable[B](a.correlationId, f(a.payload))
+      val b = CorrelationEnvelope[B](a.correlationId, f(a.payload))
       val p = Promise[Boolean]()
       producer.send(b).onComplete {
         case Success(recordMetadata) =>  p.success(true)
