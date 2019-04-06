@@ -70,6 +70,20 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging {
     Await.result[String](f3(new UserCtx("blah", new User("fred")))(1), timeout) should be ("48")
     Await.result[String](f3(new UserCtx("blah", new User("wilma")))(1), timeout) should be ("51")
   }
+
+  "future try contextual functions" should "provide a framework to compose simpler functions" in {
+
+    val f1:FutureContextualFunction[String,Int] = mapFuture[String,String](futurizer[String]()).mapTry(intifier).map(doubler).map(incrementer)
+    val f2:FutureContextualFunction[String,Int] = f1.mapUser[Int](userFactorApplier(mockUserFactorService)).flatMap[Int](futurizer(10l))
+    val f3:FutureContextualFunction[String,String] = f2.map[Int](factorializer(mockFactorialService)).map(stringifier)
+
+    Await.result[String](f3(new UserCtx("blah", new User("fred")))("1"), timeout) should be ("48")
+    Await.result[String](f3(new UserCtx("blah", new User("wilma")))("1"), timeout) should be ("51")
+    val input = "blah"
+    val result = f3(new UserCtx("blah", new User("wilma")))(input)
+    Await.ready(result, timeout)
+    result.value.get should be (failure[String](new NumberFormatException(s"""For input string: "${input}"""")))
+  }
 }
 
 trait UserFactorService {
@@ -188,6 +202,22 @@ abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extend
     new FutureContextualFunction[A,C](u => f(u).andThen(g1(u))) {}
   }
 
+  private def adaptTry[C](g: B => Try[C]): Future[B] => Future[C] = {
+    val p = Promise[C]
+    b => b.onComplete {
+      case s:Success[B] => g(s.value) match {
+        case s:Success[C] => p.success(s.value)
+        case f:Failure[C] => p.failure(f.exception)
+      }
+      case f:Failure[B] => f.exception
+    }
+    p.future
+  }
+
+  def mapTry[C](g: B => Try[C]):FutureContextualFunction[A,C] = {
+    new FutureContextualFunction[A,C](u => f(u).andThen(adaptTry[C](g))) {}
+  }
+
 }
 
 object MyTestUtils {
@@ -227,7 +257,7 @@ trait CustomMatchers {
             f.exception.getClass == t.getClass && f.exception.getMessage.equals(t.getMessage)
           }
         },
-        left+" was not a failure",
+        left+" was not a failure or failed with an exception different to the expected exception",
         left+" was a failure"
       )
     }
