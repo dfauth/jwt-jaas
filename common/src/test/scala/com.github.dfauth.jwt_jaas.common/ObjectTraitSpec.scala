@@ -43,7 +43,7 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging {
 
   "contextual functions" should "provide a framework to compose simpler functions" in {
 
-    val f:ContextualFunction[Int,Int] = mapSimple(doubler).mapSimple(incrementer).mapUser[Int](userFactorApplier(mockUserFactorService)).mapSimple[Int](factorializer(mockFactorialService))
+    val f:ContextualFunction[Int,Int] = map(doubler).map(incrementer).mapUser[Int](userFactorApplier(mockUserFactorService)).map[Int](factorializer(mockFactorialService))
 
     f(new UserCtx("blah", new User("fred")))(1) should be (48)
     f(new UserCtx("blah", new User("wilma")))(1) should be (51)
@@ -51,9 +51,9 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging {
 
   "try contextual functions" should "provide a framework to compose simpler functions" in {
 
-    val f1:TryContextualFunction[String,Int] = mapTry[String,Int](intifier).mapSimple(doubler).mapSimple(incrementer).mapSimple(stringifier).flatMap[Int](intifier)
+    val f1:TryContextualFunction[String,Int] = mapTry[String,Int](intifier).map(doubler).map(incrementer).map(stringifier).flatMap[Int](intifier)
     val f2:TryContextualFunction[String,Int] = f1.mapUserTry[Int](userFactorApplier(mockUserFactorService))
-    val f3:TryContextualFunction[String,Int] = f2.mapSimple[Int](factorializer(mockFactorialService))
+    val f3:TryContextualFunction[String,Int] = f2.map[Int](factorializer(mockFactorialService))
 
     f3(new UserCtx("blah", new User("fred")))("1") should be (Success(48))
     f3(new UserCtx("blah", new User("wilma")))("1") should be (Success(51))
@@ -63,9 +63,9 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging {
 
   "future contextual functions" should "provide a framework to compose simpler functions" in {
 
-    val f1:FutureContextualFunction[Int,Int] = mapFuture[Int,Int](futurizer[Int]()).mapSimple(doubler).mapSimple(incrementer)
+    val f1:FutureContextualFunction[Int,Int] = mapFuture[Int,Int](futurizer[Int]()).map(doubler).map(incrementer)
     val f2:FutureContextualFunction[Int,Int] = f1.mapUser[Int](userFactorApplier(mockUserFactorService)).flatMap[Int](futurizer(10l))
-    val f3:FutureContextualFunction[Int,String] = f2.mapSimple[Int](factorializer(mockFactorialService)).mapSimple(stringifier)
+    val f3:FutureContextualFunction[Int,String] = f2.map[Int](factorializer(mockFactorialService)).map(stringifier)
 
     Await.result[String](f3(new UserCtx("blah", new User("fred")))(1), timeout) should be ("48")
     Await.result[String](f3(new UserCtx("blah", new User("wilma")))(1), timeout) should be ("51")
@@ -94,11 +94,9 @@ object ContextualFunction extends LazyLogging {
 
   def mapTry[A,B](f: A => Try[B]):TryContextualFunction[A,B] = new TryContextualFunction[A,B](u => f) {}
 
-  def mapSimple[A,B,S](f:A=>B) = new ContextualFunction[A,B](user => f) with TestAppContext
+  def map[A,B](f:A=>B) = new ContextualFunction[A,B](user => f) with TestAppContext
 
   def mapUser[A,B](f:UserCtx=>A=>B) = new ContextualFunction[A,B](f) with TestAppContext
-
-  def map[A,B](f:UserCtx=>A=>B) = new ContextualFunction[A,B](f) with TestAppContext
 
   def tryAdapter[A,B](f:UserCtx => A => B):UserCtx => Try[A] => Try[B] = {
     u => a => a match {
@@ -136,7 +134,7 @@ abstract class ContextualFunction[A,B](f:UserCtx => A => B) extends Function[Use
     f(userCtx)(_)
   }
 
-  def mapSimple[C](g:B => C):ContextualFunction[A,C] = new ContextualFunction[A,C](u => f(u).andThen(g)) {}
+  def map[C](g:B => C):ContextualFunction[A,C] = new ContextualFunction[A,C](u => f(u).andThen(g)) {}
 
 }
 
@@ -158,7 +156,7 @@ abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends Cont
     new TryContextualFunction[A,C](u => f(u).andThen(g1(u))){}
   }
 
-  def mapSimple[C](g:B => C):TryContextualFunction[A,C] = mapUserTry(u => g)
+  def map[C](g:B => C):TryContextualFunction[A,C] = mapUserTry(u => g)
 }
 
 abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extends ContextualFunction[A,Future[B]](f) {
@@ -180,7 +178,7 @@ abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extend
     new FutureContextualFunction[A,C](u => f(u).andThen(g1(u))) {}
   }
 
-  def mapSimple[C](g:B => C):FutureContextualFunction[A,C] = {
+  def map[C](g:B => C):FutureContextualFunction[A,C] = {
     val g1: UserCtx => Future[B] => Future[C] = futureAdapter[B,C]((u:UserCtx) => g)
     new FutureContextualFunction[A,C](u => f(u).andThen(g1(u))) {}
   }
@@ -224,6 +222,7 @@ trait CustomMatchers {
     override def apply(left: Try[T]): MatchResult = {
       MatchResult(
         left match {
+          case s:Success[T] => false
           case f:Failure[T] => {
             f.exception.getClass == t.getClass && f.exception.getMessage.equals(t.getMessage)
           }
