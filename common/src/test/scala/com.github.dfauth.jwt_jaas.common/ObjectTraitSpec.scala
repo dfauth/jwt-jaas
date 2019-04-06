@@ -94,9 +94,9 @@ object ContextualFunction extends LazyLogging {
 
   def mapTry[A,B](f: A => Try[B]):TryContextualFunction[A,B] = new TryContextualFunction[A,B](u => f) {}
 
-  def mapSimple[A,B,S](f:A=>B) = new SimpleContextualFunction[A,B](f) with TestAppContext
+  def mapSimple[A,B,S](f:A=>B) = new ContextualFunction[A,B](user => f) with TestAppContext
 
-  def mapUser[A,B](f:UserCtx=>A=>B) = new UserContextualFunction[A,B](f) with TestAppContext
+  def mapUser[A,B](f:UserCtx=>A=>B) = new ContextualFunction[A,B](f) with TestAppContext
 
   def map[A,B](f:UserCtx=>A=>B) = new ContextualFunction[A,B](f) with TestAppContext
 
@@ -140,19 +140,7 @@ abstract class ContextualFunction[A,B](f:UserCtx => A => B) extends Function[Use
 
 }
 
-abstract class UserContextualFunction[A,B](f:UserCtx => A => B) extends ContextualFunction[A,B](u => a => f(u)(a))
-
-abstract class SimpleContextualFunction[A,B](f:A => B) extends UserContextualFunction[A,B](u => a => f(a))
-
-abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends UserContextualFunction[A,Try[B]](f) {
-
-  import ContextualFunction._
-  def mapFuture[C](g: B => Future[C]): FutureContextualFunction[A, C] = {
-    //val g1:UserCtx => Try[B] => Try[C] = tryAdapter(u => g)
-    // new FutureContextualFunction[A,C](u => f(u).andThen(futureAdapter(g)))
-    null
-  }
-
+abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends ContextualFunction[A,Try[B]](f) {
 
   import ContextualFunction._
   def flatMap[C](g: B => Try[C]):TryContextualFunction[A,C] = {
@@ -173,7 +161,7 @@ abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends User
   def mapSimple[C](g:B => C):TryContextualFunction[A,C] = mapUserTry(u => g)
 }
 
-abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extends UserContextualFunction[A,Future[B]](f) {
+abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extends ContextualFunction[A,Future[B]](f) {
 
   import ContextualFunction._
 
@@ -200,11 +188,6 @@ abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extend
   def mapUser[C](g: UserCtx => B => C):FutureContextualFunction[A,C] = {
     val g1 = futureAdapter(g)
     new FutureContextualFunction[A,C](u => f(u).andThen(g1(u))) {}
-  }
-
-  def flatMapTry[C](g: B => Try[C]):TryContextualFunction[A,C] = {
-    //new TryContextualFunction[A,C](u => f(u).andThen(g)) {}
-    null
   }
 
 }
