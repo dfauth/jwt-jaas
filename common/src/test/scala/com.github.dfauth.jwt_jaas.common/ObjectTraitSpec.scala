@@ -84,6 +84,20 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging {
     Await.ready(result, timeout)
     result.value.get should be (failure[String](new NumberFormatException(s"""For input string: "${input}"""")))
   }
+
+  "try future contextual functions" should "provide a framework to compose simpler functions" in {
+
+    val f1:FutureContextualFunction[String,Int] = mapTry(intifier).mapTryFuture[Int](futurizer[Int]()).map(doubler).map(incrementer)
+    val f2:FutureContextualFunction[String,Int] = f1.mapUser[Int](userFactorApplier(mockUserFactorService)).flatMap[Int](futurizer(10l))
+    val f3:FutureContextualFunction[String,String] = f2.map[Int](factorializer(mockFactorialService)).map(stringifier)
+
+    Await.result[String](f3(new UserCtx("blah", new User("fred")))("1"), timeout) should be ("48")
+    Await.result[String](f3(new UserCtx("blah", new User("wilma")))("1"), timeout) should be ("51")
+    val input = "blah"
+    val result = f3(new UserCtx("blah", new User("wilma")))(input)
+    Await.ready(result, timeout)
+    result.value.get should be (failure[String](new NumberFormatException(s"""For input string: "${input}"""")))
+  }
 }
 
 trait UserFactorService {
@@ -150,6 +164,10 @@ abstract class ContextualFunction[A,B](f:UserCtx => A => B) extends Function[Use
 
   def map[C](g:B => C):ContextualFunction[A,C] = new ContextualFunction[A,C](u => f(u).andThen(g)) {}
 
+  def mapFuture[C](g: B => Future[C]):FutureContextualFunction[A,C] = {
+    new FutureContextualFunction[A,C](u => f(u).andThen(g)) {}
+  }
+
 }
 
 abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends ContextualFunction[A,Try[B]](f) {
@@ -171,6 +189,17 @@ abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends Cont
   }
 
   def map[C](g:B => C):TryContextualFunction[A,C] = mapUserTry(u => g)
+
+  def mapTryFuture[C](g: B => Future[C]):FutureContextualFunction[A,C] = {
+    val g1: Try[B] => Future[C] = tryB => {
+      tryB match {
+        case s:Success[B] => g(s.value)
+        case f:Failure[B] => Promise[C].failure(f.exception).future
+      }
+    }
+
+    new FutureContextualFunction[A,C](u => f(u).andThen(g1)) {}
+  }
 }
 
 abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extends ContextualFunction[A,Future[B]](f) {
