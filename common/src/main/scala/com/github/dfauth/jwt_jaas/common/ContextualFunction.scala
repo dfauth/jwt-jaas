@@ -37,17 +37,17 @@ object ContextualFunction extends LazyLogging {
 
 abstract class ContextualFunction[A,B](f:UserCtx => A => B) extends Function[UserCtx, A => B] with AppContext {
 
-  def mapUser[C](g: UserCtx => B => C):ContextualFunction[A,C] = factory.ctxFn[A,C](u => f(u).andThen(g(u)))
+  def mapUser[C](g: UserCtx => B => C):ContextualFunction[A,C] = ctxFn[A,C](u => f(u).andThen(g(u)))
 
-  def mapTry[C](g: B => Try[C]):TryContextualFunction[A,C] = factory.tryCtxFn[A,C](u => f(u).andThen(g))
+  def mapTry[C](g: B => Try[C]):TryContextualFunction[A,C] = tryCtxFn[A,C](u => f(u).andThen(g))
 
   def apply(userCtx:UserCtx):A => B = {
     f(userCtx)(_)
   }
 
-  def map[C](g:B => C):ContextualFunction[A,C] = factory.ctxFn[A,C](u => f(u).andThen(g))
+  def map[C](g:B => C):ContextualFunction[A,C] = ctxFn[A,C](u => f(u).andThen(g))
 
-  def mapFuture[C](g: B => Future[C]):FutureContextualFunction[A,C] = factory.futureCtxFn[A,C](u => f(u).andThen(g))
+  def mapFuture[C](g: B => Future[C]):FutureContextualFunction[A,C] = futureCtxFn[A,C](u => f(u).andThen(g))
 }
 
 abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends ContextualFunction[A,Try[B]](f) {
@@ -60,12 +60,12 @@ abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends Cont
         case f:Failure[C] => throw f.exception
       }
     })
-    factory.tryCtxFn[A,C](u => f(u).andThen(g1(u)))
+    tryCtxFn[A,C](u => f(u).andThen(g1(u)))
   }
 
   def mapUserTry[C](g: UserCtx => B => C):TryContextualFunction[A,C] = {
     val g1:UserCtx => Try[B] => Try[C] = tryAdapter(g)
-    factory.tryCtxFn[A,C](u => f(u).andThen(g1(u)))
+    tryCtxFn[A,C](u => f(u).andThen(g1(u)))
   }
 
   def map[C](g:B => C):TryContextualFunction[A,C] = mapUserTry(u => g)
@@ -78,7 +78,7 @@ abstract class TryContextualFunction[A,B](f:UserCtx => A => Try[B]) extends Cont
       }
     }
 
-    factory.futureCtxFn[A,C](u => f(u).andThen(g1))
+    futureCtxFn[A,C](u => f(u).andThen(g1))
   }
 }
 
@@ -98,17 +98,17 @@ abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extend
       }
       p.future
     }
-    factory.futureCtxFn[A,C](u => f(u).andThen(g1(u)))
+    futureCtxFn[A,C](u => f(u).andThen(g1(u)))
   }
 
   def map[C](g:B => C):FutureContextualFunction[A,C] = {
     val g1: UserCtx => Future[B] => Future[C] = futureAdapter[B,C]((u:UserCtx) => g)
-    factory.futureCtxFn[A,C](u => f(u).andThen(g1(u)))
+    futureCtxFn[A,C](u => f(u).andThen(g1(u)))
   }
 
   def mapUser[C](g: UserCtx => B => C):FutureContextualFunction[A,C] = {
     val g1 = futureAdapter(g)
-    factory.futureCtxFn[A,C](u => f(u).andThen(g1(u)))
+    futureCtxFn[A,C](u => f(u).andThen(g1(u)))
   }
 
   private def adaptTry[C](g: B => Try[C]): Future[B] => Future[C] = {
@@ -124,7 +124,7 @@ abstract class FutureContextualFunction[A,B](f:UserCtx => A => Future[B]) extend
   }
 
   def mapTry[C](g: B => Try[C]):FutureContextualFunction[A,C] = {
-    factory.futureCtxFn[A,C](u => f(u).andThen(adaptTry[C](g)))
+    futureCtxFn[A,C](u => f(u).andThen(adaptTry[C](g)))
   }
 
 }

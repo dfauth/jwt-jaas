@@ -14,7 +14,7 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging with TestA
   val timeout: Duration = 5.seconds
 
 
-  import Blah._
+  import TestAppContext._
   import CustomMatchers._
 
   "contextual functions" should "provide a framework to compose simpler functions" in {
@@ -25,7 +25,7 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging with TestA
     f(new UserCtx("blah", new User("wilma")))(1) should be (51)
   }
 
-  "try contextual functions" should "provide a framework to compose simpler functions" in {
+  "contextual functions" should "also handle the case where a function can return a Try[T]" in {
 
     val f1:TryContextualFunction[String,Int] = mapTry[String,Int](intifier).map(doubler).map(incrementer).map(stringifier).flatMap[Int](intifier)
     val f2:TryContextualFunction[String,Int] = f1.mapUserTry[Int](userFactorApplier(mockUserFactorService))
@@ -37,7 +37,7 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging with TestA
     f3(new UserCtx("blah", new User("wilma")))(input) should be (failure[Int](new NumberFormatException(s"""For input string: "${input}"""")))
   }
 
-  "future contextual functions" should "provide a framework to compose simpler functions" in {
+  "contextual functions" should "also handle the case where a function can return a Future[T]" in {
 
     val f1:FutureContextualFunction[Int,Int] = mapFuture[Int,Int](futurizer[Int]()).map(doubler).map(incrementer)
     val f2:FutureContextualFunction[Int,Int] = f1.mapUser[Int](userFactorApplier(mockUserFactorService)).flatMap[Int](futurizer(10l))
@@ -47,7 +47,7 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging with TestA
     Await.result[String](f3(new UserCtx("blah", new User("wilma")))(1), timeout) should be ("51")
   }
 
-  "future try contextual functions" should "provide a framework to compose simpler functions" in {
+  "contextual functions" should "also handle the case where we combin both Try[T] and Future[T]" in {
 
     val f1:FutureContextualFunction[String,Int] = mapFuture[String,String](futurizer[String]()).mapTry(intifier).map(doubler).map(incrementer)
     val f2:FutureContextualFunction[String,Int] = f1.mapUser[Int](userFactorApplier(mockUserFactorService)).flatMap[Int](futurizer(10l))
@@ -61,7 +61,7 @@ class ObjectTraitSpec extends FlatSpec with Matchers with LazyLogging with TestA
     result.value.get should be (failure[String](new NumberFormatException(s"""For input string: "${input}"""")))
   }
 
-  "try future contextual functions" should "provide a framework to compose simpler functions" in {
+  "contextual functions" should "also handle the case where we combin both Future[T] and Try[T] in any order" in {
 
     val f1:FutureContextualFunction[String,Int] = mapTry(intifier).mapTryFuture[Int](futurizer[Int]()).map(doubler).map(incrementer)
     val f2:FutureContextualFunction[String,Int] = f1.mapUser[Int](userFactorApplier(mockUserFactorService)).flatMap[Int](futurizer(10l))
