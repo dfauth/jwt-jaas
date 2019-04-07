@@ -2,16 +2,19 @@ package com.github.dfauth.jwt_jaas.kafka
 
 import akka.Done
 import akka.actor.ActorSystem
-import akka.kafka.ProducerSettings
-import akka.kafka.scaladsl.Producer
+import akka.kafka.{ConsumerSettings, ProducerSettings, Subscription, Subscriptions}
+import akka.kafka.scaladsl.{Consumer, Producer}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.StringSerializer
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.collection.mutable.ListBuffer
+import scala.collection.{immutable, mutable}
 import scala.concurrent.Future
 
 class KafkaStreamsSpec
@@ -25,7 +28,9 @@ class KafkaStreamsSpec
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
-  "akka streams" should "be possible" in {
+  val testPayload: immutable.Iterable[Int] = 0 to 100
+
+  "akka streams" should "allow objects to be streamed to and from kafka preserving the order" in {
 
     try {
 
@@ -35,17 +40,29 @@ class KafkaStreamsSpec
           ProducerSettings(system, new StringSerializer, new StringSerializer)
             .withBootstrapServers(brokerList)
 
+        lazy val subscription = Subscriptions.topics(TOPIC)
+
+        val consumerSettings =
+          ConsumerSettings(system, new StringDeserializer, new StringDeserializer)
+            .withBootstrapServers(brokerList)
+          .withGroupId(java.util.UUID.randomUUID.toString)
+
+        val records:mutable.ListBuffer[Int] = ListBuffer.empty[Int]
+        Consumer.plainSource(consumerSettings, subscription).runWith(Sink.foreach { t =>
+          records += t.value().toInt
+        })
+
+        Thread.sleep(5 * 1000)
+
         val done: Future[Done] =
-          Source(1 to 100)
+          Source(testPayload)
             .map(_.toString)
             .map(value => new ProducerRecord[String, String](TOPIC, value))
-          .map(r => {
-            logger.info("producerRecord: "+r)
-            r
-          })
             .runWith(Producer.plainSink(producerSettings))
 
-        Thread.sleep(10 * 1000)
+        Thread.sleep(5 * 1000)
+
+        records.toList should be (testPayload.toList)
       }
     } finally {
       // EmbeddedKafka.stop()
