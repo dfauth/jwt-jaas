@@ -34,31 +34,34 @@ class KafkaStreamsSpec
 
     try {
 
+      import JsonSupport._
+      import spray.json._
+
       withRunningKafkaOnFoundPort(EmbeddedKafkaConfig(kafkaPort = 9092, zooKeeperPort = 2181)) { implicit config =>
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
         val producerSettings =
-          ProducerSettings(system, new StringSerializer, new StringSerializer)
+          ProducerSettings[String, Payload[Int]](system, new StringSerializer, new JsValueSerializer[Payload[Int]]((p:Payload[Int]) => p.toJson))
             .withBootstrapServers(brokerList)
 
         lazy val subscription = Subscriptions.topics(TOPIC)
 
         val consumerSettings =
-          ConsumerSettings(system, new StringDeserializer, new StringDeserializer)
+          ConsumerSettings[String, Payload[Int]](system, new StringDeserializer, new JsValueDeserializer[Payload[Int]](o => o.convertTo[Payload[Int]]))
             .withBootstrapServers(brokerList)
           .withGroupId(java.util.UUID.randomUUID.toString)
 
         val records:mutable.ListBuffer[Int] = ListBuffer.empty[Int]
         Consumer.plainSource(consumerSettings, subscription).runWith(Sink.foreach { t =>
-          records += t.value().toInt
+          records += t.value().payload
         })
 
         Thread.sleep(5 * 1000)
 
         val done: Future[Done] =
           Source(testPayload)
-            .map(_.toString)
-            .map(value => new ProducerRecord[String, String](TOPIC, value))
-            .runWith(Producer.plainSink(producerSettings))
+            .map(Payload[Int](_))
+            .map(value => new ProducerRecord[String, Payload[Int]](TOPIC, value))
+            .runWith(Producer.plainSink[String, Payload[Int]](producerSettings))
 
         Thread.sleep(5 * 1000)
 
