@@ -44,7 +44,7 @@ class ApiGatewaySpec
   "an api gateway" should "act as a reverse proxy" in {
 
     // start the discovery service
-    val apiGateway = new ApiGateway()
+    val apiGateway = new ApiGateway(port = 0)
     val fBinding = apiGateway.start()
     // wait for startup
     val binding:Http.ServerBinding = Await.result(fBinding, 1.seconds)
