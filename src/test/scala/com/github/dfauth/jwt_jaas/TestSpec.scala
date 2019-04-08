@@ -103,6 +103,7 @@ class TestSpec
       }
     } finally {
       endPoint.stop(bindingFuture)
+      EmbeddedKafka.stop()
     }
   }
 

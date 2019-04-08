@@ -1,6 +1,5 @@
 package com.github.dfauth.jwt_jaas
 
-import com.github.dfauth.jws_jaas.MicroserviceFactory
 import com.github.dfauth.jwt_jaas.kafka.JsonSupport._
 import com.github.dfauth.jwt_jaas.kafka._
 import com.typesafe.scalalogging.LazyLogging
@@ -63,7 +62,7 @@ class FactorialSpec extends FlatSpec
         throw e
       }
     } finally {
-      // EmbeddedKafka.stop()
+      EmbeddedKafka.stop()
     }
   }
 
