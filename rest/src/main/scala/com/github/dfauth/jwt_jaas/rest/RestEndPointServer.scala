@@ -7,6 +7,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.RouteConcatenation._
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.LazyLogging
 
@@ -41,7 +42,12 @@ case class RestEndPointServer(route:Route, hostname:String = "localhost", port:I
   // needed for the future flatMap/onComplete in the end
   implicit val executionContext = system.dispatcher
 
-  def start():Future[ServerBinding] = Http().bindAndHandle(route, hostname, port)
+  def start(route:Route):Future[ServerBinding] = start(Option(route))
+
+  def start(additionalRoute:Option[Route] = None):Future[ServerBinding] = {
+    val r = additionalRoute.map(r => r ~ route).getOrElse(route)
+    Http().bindAndHandle(r, hostname, port)
+  }
 
   def stop(bindingFuture:Future[ServerBinding]):Unit = {
     bindingFuture
