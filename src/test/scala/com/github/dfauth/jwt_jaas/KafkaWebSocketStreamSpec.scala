@@ -109,7 +109,7 @@ class KafkaWebSocketStreamSpec
             }
           }
 
-          Thread.sleep(10 * 1000)
+          Thread.sleep(5 * 1000)
 
           val done: Future[Done] =
             Source(testPayload)
@@ -119,7 +119,7 @@ class KafkaWebSocketStreamSpec
               r
             }).runWith(Producer.plainSink[String, Payload[Int]](producerSettings))
 
-          Thread.sleep(10 * 1000)
+          Thread.sleep(2 * 1000)
 
           records.toSeq should be (testPayload.toSeq)
 
