@@ -4,8 +4,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest, WebSocketUpgradeResponse}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
-import akka.http.scaladsl.server.Directives.{handleWebSocketMessages, path}
-import akka.http.scaladsl.server.Route
+import scala.concurrent.ExecutionContext.Implicits.global
 import akka.kafka.scaladsl.{Consumer, Producer}
 import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
@@ -18,6 +17,7 @@ import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.{FlatSpec, Matchers}
+import spray.json.JsonParser
 
 import scala.collection.immutable
 import scala.collection.mutable.ListBuffer
@@ -32,19 +32,18 @@ class KafkaWebSocketStreamSpec
     with EmbeddedKafka
     with LazyLogging {
 
+  import com.github.dfauth.jwt_jaas.kafka.JsonSupport._
+  import spray.json._
 
   val testPayload: immutable.Iterable[Int] = 0 to 100
 
-  "a websocket " should "be able to stream events from kafka" in {
+  implicit val system = ActorSystem()
+  implicit val materializer = ActorMaterializer()
 
-    import com.github.dfauth.jwt_jaas.kafka.JsonSupport._
-    import spray.json._
+  "a websocket " should "be able to stream events from kafka" in {
 
     try {
       val TOPIC = "subscribe"
-
-      implicit val system = ActorSystem()
-      implicit val materializer = ActorMaterializer()
 
       withRunningKafkaOnFoundPort(EmbeddedKafkaConfig(kafkaPort = 9092, zooKeeperPort = 2181)) { implicit config =>
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
@@ -75,39 +74,8 @@ class KafkaWebSocketStreamSpec
             }
           }
 
-          val webSocketFlow:Flow[Message, Message, Future[WebSocketUpgradeResponse]] = Http().webSocketClientFlow(WebSocketRequest(uri))
-
-          val messageSource: Source[Message, ActorRef] =
-            Source.actorRef[TextMessage.Strict](bufferSize = 10, OverflowStrategy.fail)
-
-          val records = new ListBuffer[Int]()
-          val messageSink: Sink[Message, NotUsed] =
-            Flow[Message]
-              .map(_ match {
-                case t:TextMessage.Strict => t.text
-              }
-              ).map( t => {
-              val p = JsonParser(t).asJsObject.convertTo[Payload[Int]].payload
-              p
-            }
-            ).to(Sink.foreach(i => {
-              records += i
-              logger.info(s"i is ${i}")
-            }))
-
-          val ((ws, upgradeResponse), closed) =
-            messageSource
-              .viaMat(webSocketFlow)(Keep.both)
-              .toMat(messageSink)(Keep.both)
-              .run()
-
-          val connected = upgradeResponse.flatMap { upgrade =>
-            if (upgrade.response.status == StatusCodes.SwitchingProtocols) {
-              Future.successful(Done)
-            } else {
-              throw new RuntimeException(s"Connection failed: ${upgrade.response.status}")
-            }
-          }
+          val records = connect(uri)
+          val records1 = connect(uri)
 
           Thread.sleep(5 * 1000)
 
@@ -121,7 +89,8 @@ class KafkaWebSocketStreamSpec
 
           Thread.sleep(2 * 1000)
 
-          records.toSeq should be (testPayload.toSeq)
+          records should be (testPayload.toSeq)
+          records1 should be (testPayload.toSeq)
 
         } finally {
           adapter.stop(bindingFuture)
@@ -130,6 +99,44 @@ class KafkaWebSocketStreamSpec
     } finally {
       EmbeddedKafka.stop()
     }
+  }
+
+  def connect(uri: Uri):ListBuffer[Int] = {
+
+    val webSocketFlow:Flow[Message, Message, Future[WebSocketUpgradeResponse]] = Http().webSocketClientFlow(WebSocketRequest(uri))
+
+    val messageSource: Source[Message, ActorRef] =
+      Source.actorRef[TextMessage.Strict](bufferSize = 10, OverflowStrategy.fail)
+
+    val records = new ListBuffer[Int]()
+    val messageSink: Sink[Message, NotUsed] =
+      Flow[Message]
+        .map(_ match {
+          case t:TextMessage.Strict => t.text
+        }
+        ).map( t => {
+        val p = JsonParser(t).asJsObject.convertTo[Payload[Int]].payload
+        p
+      }
+      ).to(Sink.foreach(i => {
+        records += i
+        logger.info(s"i is ${i}")
+      }))
+
+    val ((ws, upgradeResponse), closed) =
+      messageSource
+        .viaMat(webSocketFlow)(Keep.both)
+        .toMat(messageSink)(Keep.both)
+        .run()
+
+    val connected = upgradeResponse.flatMap { upgrade =>
+      if (upgrade.response.status == StatusCodes.SwitchingProtocols) {
+        Future.successful(Done)
+      } else {
+        throw new RuntimeException(s"Connection failed: ${upgrade.response.status}")
+      }
+    }
+    records
   }
 
 }
