@@ -1,17 +1,22 @@
 package com.github.dfauth.jwt_jaas
 
+import java.security.KeyPair
+
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest, WebSocketUpgradeResponse}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import akka.kafka.scaladsl.{Consumer, Producer}
 import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.{Done, NotUsed}
+import com.github.dfauth.jwt_jaas.jwt.KeyPairFactory
 import com.github.dfauth.jwt_jaas.kafka._
-import com.github.dfauth.jwt_jaas.rest.RestEndPointServer
+import com.github.dfauth.jwt_jaas.rest.{AuthenticationService, RestEndPointServer, TestUtils, Tokens}
+import com.github.dfauth.jwt_jaas.rest.TestUtils.asUser
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -45,37 +50,54 @@ class KafkaWebSocketStreamSpec
     try {
       val TOPIC = "subscribe"
 
+      val keyPair: KeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
+
       withRunningKafkaOnFoundPort(EmbeddedKafkaConfig(kafkaPort = 9092, zooKeeperPort = 2181)) { implicit config =>
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
 
         val payloadSerializer:Payload[Int] => JsValue = _.toJson
         val payloadDeserializer:JsValue => Payload[Int] = _.convertTo[Payload[Int]]
 
-        // create a producer through which we will stream requests to Kafka (this is for etcting purposes only)
+        // create a producer through which we will stream requests to Kafka (this is for testing purposes only)
         val producerSettings =
           ProducerSettings[String, Payload[Int]](system, new StringSerializer, new JsValueSerializer[Payload[Int]](payloadSerializer))
             .withBootstrapServers(brokerList)
 
+        // create an authentication service
+        val authService = new AuthenticationService(port = 0, f = TestUtils.authenticateFred)
+        val authBindingFuture = authService.start()
+
+        // create the websocket adapter
         val adapter = new WebSocketKafkaAdapter(brokerList = brokerList,
           serializer = payloadSerializer,
           deserializer = payloadDeserializer,
+          publicKey = authService.getPublicKey,
           topic = TOPIC)
 
-        val bindingFuture = adapter.start()
+        val webSocketBindingFuture = adapter.start()
 
         try {
-          val binding = Await.result(bindingFuture, 5000.seconds)
+          // wait for start up
+          val webSocketBinding = Await.result(webSocketBindingFuture, 5000.seconds)
+          val authBinding = Await.result(authBindingFuture, 5000.seconds)
 
-          val uri:Uri = RestEndPointServer.endPointUri(binding, "subscribe", "ws") match {
-            case Success(uri) => uri
-            case Failure(t) => {
-              logger.error(t.getMessage, t)
-              throw t;
-            }
-          }
+          implicit val endPoint = RestEndPointServer.endPointUrl(authBinding, "login")
 
-          val records = connect(uri)
-          val records1 = connect(uri)
+          // login as fred
+          val userId:String = "fred"
+          val password:String = "password"
+          val tokens:Tokens = asUser(userId).withPassword(password).login
+
+//          val uri:Uri = RestEndPointServer.endPointUri(binding, "subscribe", "ws") match {
+//            case Success(uri) => uri
+//            case Failure(t) => {
+//              logger.error(t.getMessage, t)
+//              throw t;
+//            }
+//          }
+
+//          val records = connect(uri)
+//          val records1 = connect(uri)
 
           Thread.sleep(5 * 1000)
 
@@ -89,11 +111,12 @@ class KafkaWebSocketStreamSpec
 
           Thread.sleep(2 * 1000)
 
-          records should be (testPayload.toSeq)
-          records1 should be (testPayload.toSeq)
+//          records should be (testPayload.toSeq)
+//          records1 should be (testPayload.toSeq)
 
         } finally {
-          adapter.stop(bindingFuture)
+          adapter.stop(webSocketBindingFuture)
+          authService.stop(authBindingFuture)
         }
       }
     } finally {

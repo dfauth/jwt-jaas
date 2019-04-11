@@ -1,5 +1,7 @@
 package com.github.dfauth.jwt_jaas
 
+import java.security.PublicKey
+
 import akka.NotUsed
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.Http
@@ -11,7 +13,11 @@ import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, RunnableGraph, Sink, SinkQueue, SinkQueueWithCancel, Source, SourceQueue}
+import com.github.dfauth.jwt_jaas.jwt.{JWTVerifier, KeyPairFactory}
 import com.github.dfauth.jwt_jaas.kafka.JsValueDeserializer
+import com.github.dfauth.jwt_jaas.rest.TokenValidator
+import com.github.dfauth.jwt_jaas.rest.MyDirectives.authenticate
+import com.github.dfauth.jwt_jaas.rest.Routes.jwtVerifier
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.common.serialization.StringDeserializer
 import spray.json.JsValue
@@ -29,15 +35,20 @@ class WebSocketKafkaAdapter[T](hostname:String = "localhost",
                                topic:String = "subscribe",
                                endpoint:String = "subscribe",
                                deserializer:JsValue => T,
-                               serializer:T => JsValue) extends LazyLogging {
+                               publicKey:PublicKey,
+                               serializer:T => JsValue) extends LazyLogging with TokenValidator {
 
   implicit val system = ActorSystem("webSocketKafkaAdapter")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
+  val jwtVerifier = new JWTVerifier(publicKey)
+
   val websocketRoute:Route =
-    path(endpoint) {
-      handleWebSocketMessages(subscribeFlow(brokerList))
+    authenticate { u =>
+      path(endpoint) {
+        handleWebSocketMessages(subscribeFlow(brokerList))
+      }
     }
 
   def start():Future[ServerBinding] = {
