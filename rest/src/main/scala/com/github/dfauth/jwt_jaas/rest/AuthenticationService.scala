@@ -11,10 +11,9 @@ import akka.http.scaladsl.server.Directives.{as, complete, entity, path, post, r
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import com.github.dfauth.jwt_jaas.jwt._
-import com.github.dfauth.jwt_jaas.rest.MyDirectives.authRejection
 import com.github.dfauth.jwt_jaas.rest.CredentialsJsonSupport._
+import com.github.dfauth.jwt_jaas.rest.MyDirectives.authRejection
 import com.typesafe.scalalogging.LazyLogging
-import spray.json._
 
 import scala.concurrent.Future
 
@@ -31,7 +30,7 @@ class AuthenticationService[T](hostname:String = "localhost",
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
-  val jwtBuilder = new JWTBuilder("me", keyPair.getPrivate)
+  val jwtBuilder = new JWTBuilder("TitanOTC", keyPair.getPrivate)
 
   def login(f:Credentials => Option[User]):Route =
     path("login") {

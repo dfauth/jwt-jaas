@@ -7,7 +7,7 @@ public class Role {
     private String roleName;
     private String systemId;
 
-    Role(String roleName, String systemId) {
+    Role(String systemId, String roleName) {
         this.roleName = roleName;
         this.systemId = systemId;
     }

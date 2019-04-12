@@ -36,6 +36,8 @@ val jjwt_api = "io.jsonwebtoken" % "jjwt-api" % "latest.release" //% "compile"
 val jjwt_impl = "io.jsonwebtoken" % "jjwt-impl" % "latest.release" //% "runtime,test"
 val jjwt_jackson = "io.jsonwebtoken" % "jjwt-jackson" % "latest.release" //% "runtime"
 val javax_ws_rs = "javax.ws.rs" % "javax.ws.rs-api" % "2.1.1" % Test
+val tyrus = "org.glassfish.tyrus.bundles" % "tyrus-standalone-client-jdk" % "1.12"
+
 //val jackson_databind = "com.fasterxml.jackson.core" % "jackson-databind" % "latest.release"
 
 val kafkaStreams = "org.apache.kafka" % "kafka-streams" % kafkaVersion withSources()
@@ -60,7 +62,8 @@ lazy val jwt = (project in file("jwt"))
 val restLibraryDependencies = commonJavaDeps ++ commonScalaDeps ++ Seq(akkaHttp,
   akkaStream,
   restAssurred,
-  hamcrest)
+  hamcrest,
+  tyrus)
 
 lazy val rest = (project in file("rest"))
   .settings(

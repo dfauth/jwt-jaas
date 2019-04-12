@@ -36,7 +36,7 @@ public class JWTVerifier {
         try {
             Jws<Claims> claims = Jwts.parser()
                     .setSigningKey(publicKey)
-                    .requireIssuer("me")
+                    .requireIssuer("TitanOTC")
                     .parseClaimsJws(token);
             return TokenAuthentication.Success.with(f.apply(claims));
         } catch (RuntimeException e) {

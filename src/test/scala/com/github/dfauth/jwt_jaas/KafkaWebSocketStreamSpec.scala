@@ -6,30 +6,26 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest, WebSocketUpgradeResponse}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import akka.kafka.scaladsl.{Consumer, Producer}
-import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
+import akka.kafka.ProducerSettings
+import akka.kafka.scaladsl.Producer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.{Done, NotUsed}
 import com.github.dfauth.jwt_jaas.jwt.KeyPairFactory
 import com.github.dfauth.jwt_jaas.kafka._
-import com.github.dfauth.jwt_jaas.rest.{AuthenticationService, RestEndPointServer, TestUtils, Tokens}
 import com.github.dfauth.jwt_jaas.rest.TestUtils.asUser
+import com.github.dfauth.jwt_jaas.rest.{AuthenticationService, RestEndPointServer, TestUtils, Tokens}
 import com.typesafe.scalalogging.LazyLogging
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.StringSerializer
 import org.scalatest.{FlatSpec, Matchers}
-import spray.json.JsonParser
 
 import scala.collection.immutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success}
 
 class KafkaWebSocketStreamSpec
   extends FlatSpec
@@ -88,18 +84,18 @@ class KafkaWebSocketStreamSpec
           val password:String = "password"
           val tokens:Tokens = asUser(userId).withPassword(password).login
 
-//          val uri:Uri = RestEndPointServer.endPointUri(binding, "subscribe", "ws") match {
-//            case Success(uri) => uri
-//            case Failure(t) => {
-//              logger.error(t.getMessage, t)
-//              throw t;
-//            }
-//          }
+          import RestEndPointServer._
 
-//          val records = connect(uri)
-//          val records1 = connect(uri)
+          val records = new ListBuffer[Int]()
+          val webSocketEndpoint = tokens.webSocket(endPointURI(webSocketBinding, "subscribe", "ws"), a => {
+            val p = JsonParser(a).asJsObject.convertTo[Payload[Int]]
+            records += p.payload
+          })
 
           Thread.sleep(5 * 1000)
+
+          implicit val system = ActorSystem()
+          implicit val materializer = ActorMaterializer()
 
           val done: Future[Done] =
             Source(testPayload)
@@ -111,8 +107,7 @@ class KafkaWebSocketStreamSpec
 
           Thread.sleep(2 * 1000)
 
-//          records should be (testPayload.toSeq)
-//          records1 should be (testPayload.toSeq)
+          records should be (testPayload.toSeq)
 
         } finally {
           adapter.stop(webSocketBindingFuture)

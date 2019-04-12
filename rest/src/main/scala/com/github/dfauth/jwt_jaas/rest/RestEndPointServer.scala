@@ -1,6 +1,6 @@
 package com.github.dfauth.jwt_jaas.rest
 
-import java.net.MalformedURLException
+import java.net.{MalformedURLException, URI}
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -32,6 +32,11 @@ object RestEndPointServer {
     } catch {
       case e:MalformedURLException => Failure(e)
     }
+  }
+
+  def endPointURI(binding:ServerBinding, file: String, protocol:String = "http"):URI = {
+    val scheme = s"${protocol}://${binding.localAddress.getHostName}:${binding.localAddress.getPort}/${file}"
+    URI.create(scheme)
   }
 }
 
