@@ -1,27 +1,29 @@
 package com.github.dfauth.jwt_jaas.discovery
 
 import java.net.URL
+import java.util.concurrent.atomic.AtomicReference
 
 import akka.actor.ActorSystem
-import akka.http.javadsl.settings.ClientConnectionSettings
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.{as, complete, entity, extract, get, path, post}
+import akka.http.scaladsl.server.Directives.{as, complete, entity, extract, path, post}
 import akka.http.scaladsl.server.RouteConcatenation._
 import akka.http.scaladsl.server.{Route, RouteResult}
-import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import com.github.dfauth.jwt_jaas.rest.RestEndPointServer
+import com.github.dfauth.jwt_jaas.rest.{RestEndPointServer, ServiceLifecycle}
 import com.typesafe.scalalogging.LazyLogging
 import io.restassured.RestAssured.given
 import io.restassured.http.ContentType
 import org.hamcrest.Matchers.equalTo
-import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat}
+import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-import scala.concurrent.Future
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
 object ApiGateway extends LazyLogging {
@@ -89,7 +91,39 @@ object ApiGateway extends LazyLogging {
 
 class ApiGateway(host:String = "localhost", port:Int = 8080) extends RestEndPointServer(ApiGateway.routes, host, port) {
 
-  def bind(b: Binding) = ApiGateway.bind(b)
+  private var starters = new mutable.ListBuffer[ServiceStarter]()
+
+  def bind(b: Binding):Unit = ApiGateway.bind(b)
+
+  def bind(b: ServerBinding, path:String):Unit = {
+    bind(Binding(path, RestEndPointServer.endPointUrl(b, path)))
+  }
+
+  def bind[T <: ServiceLifecycle](path:String, service: T):T = {
+    starters += ServiceStarter(path, service)
+    service
+  }
+
+  def startServices(duration: Duration): Unit = startServices(Option(duration))
+
+  def startServices(duration: Option[Duration] = None): Unit = {
+    starters.map(t => {
+      t.start().onComplete {
+        case s:Success[ServerBinding] => {
+          bind(s.value, t.path)
+        }
+        case f:Failure[ServerBinding] => {
+          logger.error(f.exception.getMessage, f.exception)
+        }
+      }
+    })
+    // if duration specified, wait for startup
+    duration.map(d => Await.ready(Future.sequence(starters.map(_.future())), d))
+  }
+
+  def stopServices(): Unit = {
+    starters.foreach(s => s.stop())
+  }
 
 }
 
@@ -117,4 +151,17 @@ case class Binder(bindUrl:String) {
       body("bind",equalTo("ok"));
   }
 
+}
+
+case class ServiceStarter(path:String, service:ServiceLifecycle) {
+
+  private val bindingFuture: AtomicReference[Future[ServerBinding]] = new AtomicReference[Future[ServerBinding]]()
+
+  def future(): Future[ServerBinding] = bindingFuture.get()
+
+  def start() = {
+    bindingFuture.set(service.start())
+    bindingFuture.get()
+  }
+  def stop() = bindingFuture.get().map(f => service.stop(_))
 }
