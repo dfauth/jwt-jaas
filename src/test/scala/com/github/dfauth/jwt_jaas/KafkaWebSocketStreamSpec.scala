@@ -11,6 +11,7 @@ import akka.kafka.scaladsl.Producer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.{Done, NotUsed}
+import com.github.dfauth.jwt_jaas.discovery.ApiGateway
 import com.github.dfauth.jwt_jaas.jwt.KeyPairFactory
 import com.github.dfauth.jwt_jaas.kafka._
 import com.github.dfauth.jwt_jaas.rest.TestUtils.asUser
@@ -48,6 +49,8 @@ class KafkaWebSocketStreamSpec
 
       val keyPair: KeyPair = KeyPairFactory.createKeyPair("RSA", 2048)
 
+      val apiGateway = new ApiGateway(port = 0)
+
       withRunningKafkaOnFoundPort(EmbeddedKafkaConfig(kafkaPort = 9092, zooKeeperPort = 2181)) { implicit config =>
         val (zookeeperConnectString, brokerList) = connectionProperties(config)
 
@@ -59,25 +62,25 @@ class KafkaWebSocketStreamSpec
           ProducerSettings[String, Payload[Int]](system, new StringSerializer, new JsValueSerializer[Payload[Int]](payloadSerializer))
             .withBootstrapServers(brokerList)
 
-        // create an authentication service
-        val authService = new AuthenticationService(port = 0, f = TestUtils.authenticateFred)
-        val authBindingFuture = authService.start()
+        // create an authentication service behind the apiGateway
+        val authService = apiGateway.bind("login", new AuthenticationService(port = 0, f = TestUtils.authenticateFred))
 
-        // create the websocket adapter
-        val adapter = new WebSocketKafkaAdapter(brokerList = brokerList,
-          serializer = payloadSerializer,
-          deserializer = payloadDeserializer,
-          publicKey = authService.getPublicKey,
-          topic = TOPIC)
+        // create the websocket adapter behind the apiGateway
+        val adapter = apiGateway.bind("subscribe", new WebSocketKafkaAdapter(brokerList = brokerList, port = 0,
+            serializer = payloadSerializer,
+            deserializer = payloadDeserializer,
+            publicKey = authService.getPublicKey,
+            topic = TOPIC))
 
-        val webSocketBindingFuture = adapter.start()
+        val apiGatewayBindingFuture = apiGateway.start()
 
         try {
           // wait for start up
-          val webSocketBinding = Await.result(webSocketBindingFuture, 5000.seconds)
-          val authBinding = Await.result(authBindingFuture, 5000.seconds)
+          apiGateway.startServices(5.seconds)
 
-          implicit val endPoint = RestEndPointServer.endPointUrl(authBinding, "login")
+          val apiGatewayBinding = Await.result(apiGatewayBindingFuture, 5.seconds)
+
+          implicit val endPoint = RestEndPointServer.endPointUrl(apiGatewayBinding, "login")
 
           // login as fred
           val userId:String = "fred"
@@ -87,7 +90,7 @@ class KafkaWebSocketStreamSpec
           import RestEndPointServer._
 
           val records = new ListBuffer[Int]()
-          val webSocketEndpoint = tokens.webSocket(endPointURI(webSocketBinding, "subscribe", "ws"), a => {
+          val webSocketEndpoint = tokens.webSocket(endPointURI(apiGatewayBinding, "subscribe", "ws"), a => {
             val p = JsonParser(a).asJsObject.convertTo[Payload[Int]]
             records += p.payload
           })
@@ -110,8 +113,8 @@ class KafkaWebSocketStreamSpec
           records should be (testPayload.toSeq)
 
         } finally {
-          adapter.stop(webSocketBindingFuture)
-          authService.stop(authBindingFuture)
+          apiGateway.startServices()
+          apiGateway.stop(apiGatewayBindingFuture)
         }
       }
     } finally {
