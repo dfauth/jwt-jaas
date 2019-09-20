@@ -25,6 +25,8 @@ public class PermissionTest {
         AuthorizationPolicy policy = new AuthorizationPolicyImpl(directive);
         AuthorizationDecision authorizationDecision = policy.permit(new ImmutableSubject(fred), new RolePermission());
         assertTrue(authorizationDecision.isAllowed());
+        authorizationDecision = policy.permit(new ImmutableSubject(USER.of("wilma")), new RolePermission());
+        assertTrue(authorizationDecision.isDenied());
     }
 
     @Test

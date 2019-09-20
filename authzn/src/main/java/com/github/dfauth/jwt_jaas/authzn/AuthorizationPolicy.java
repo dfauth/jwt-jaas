@@ -16,7 +16,7 @@ public abstract class AuthorizationPolicy {
                                 subject.getPrincipals().stream().map(p ->                                   // for each principal associated with this subject
                                         dc.withPrincipal(p)                                                 // apply the principal to the decision context to get a authorization decision
                                 ).reduce(DENY, or)                                                         // reduce it accepting any principal allowed
-                        ).findFirst().                                                                      // the first entry has spriority
+                        ).findFirst().                                                                      // the first entry has priority
                         orElse(DENY);                                                                       // but  if none is found, deny
         return new AuthorizationDecision(){
             @Override
